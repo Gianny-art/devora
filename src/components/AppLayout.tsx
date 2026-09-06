@@ -1,0 +1,107 @@
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
+import { Button } from '@/components/ui/button';
+import { NotificationBell } from '@/components/NotificationBell';
+import { Radar, LayoutDashboard, Users, CreditCard, LogOut, Settings, UserCircle, Handshake } from 'lucide-react';
+import { useRef } from 'react';
+import devoraLogo from '@/assets/devora-logo.png';
+
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  const { user, signOut } = useAuth();
+  const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const navItems = [
+    { to: '/scan', label: t('nav.scanner'), icon: Radar },
+    { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { to: '/leads', label: t('nav.leads'), icon: Users },
+    { to: '/collaboration', label: t('collab.collaborators'), icon: Handshake },
+    { to: '/pricing', label: t('nav.plans'), icon: CreditCard },
+    { to: '/settings', label: t('nav.settings'), icon: Settings },
+  ];
+
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const currentIndex = navItems.findIndex(n => n.to === location.pathname);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy)) return;
+    if (currentIndex === -1) return;
+    if (dx < 0 && currentIndex < navItems.length - 1) navigate(navItems[currentIndex + 1].to);
+    else if (dx > 0 && currentIndex > 0) navigate(navItems[currentIndex - 1].to);
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
+          <Link to="/landing" className="flex items-center gap-1.5 shrink-0">
+            <img src={devoraLogo} alt="DEVora" className="h-9 sm:h-11 w-auto object-contain" />
+          </Link>
+
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-1">
+            {navItems.map(({ to, label, icon: Icon }) => (
+              <Link key={to} to={to}>
+                <Button variant={location.pathname === to ? 'secondary' : 'ghost'} size="sm" className="gap-1.5">
+                  <Icon className="w-3.5 h-3.5" /> {label}
+                </Button>
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <NotificationBell />
+            {user ? (
+              <>
+                <Link to="/profile">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <UserCircle className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="icon" onClick={signOut} className="h-8 w-8">
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth">
+                <Button size="sm">{t('nav.signIn')}</Button>
+              </Link>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      <main className="pt-14 sm:pt-16 pb-16 md:pb-0 min-h-screen" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        {children}
+      </main>
+
+      {/* Mobile bottom tab bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border/50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="flex items-stretch h-14 w-full">
+          {navItems.map(({ to, label, icon: Icon }) => {
+            const isActive = location.pathname === to;
+            return (
+              <Link key={to} to={to} className={`flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-primary' : ''}`} />
+                <span className="text-[9px] font-medium leading-none truncate max-w-full px-0.5">{label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

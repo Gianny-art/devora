@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Devora</string>
+    <string name="title_activity_main">Devora</string>
+    <string name="package_name">com.devora.app</string>
+    <string name="custom_url_scheme">com.devora.app</string>
+</resources>

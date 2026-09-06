@@ -1,0 +1,16 @@
+project_id = "abifmrsvbhbzhwdubwvu"
+
+[functions.discover-businesses]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.create-payment]
+verify_jwt = false
+
+[functions.campay-webhook]
+verify_jwt = false
+
+[functions.maviance-webhook]
+verify_jwt = false

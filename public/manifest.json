@@ -1,0 +1,30 @@
+{
+  "name": "Devora - Business Scanner",
+  "short_name": "Devora",
+  "description": "Scannez les entreprises locales, identifiez celles sans site web et gérez vos leads. Par Foapa Gianny Robert.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0e13",
+  "theme_color": "#2da97c",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
