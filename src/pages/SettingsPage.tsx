@@ -175,7 +175,7 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">{t('settings.installDesc')}</p>
           )}
           {isWindows && (
-            <a href="/downloads/devora-windows.zip" download className="inline-block pt-1">
+            <a href="https://github.com/Gianny-art/devora/releases/download/v1.0.0-desktop/devora-windows.zip" className="inline-block pt-1">
               <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5">
                 <Download className="w-3.5 h-3.5" /> {language === 'fr' ? 'Télécharger pour Windows' : 'Download for Windows'}
               </Button>
