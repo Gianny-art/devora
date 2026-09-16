@@ -129,7 +129,7 @@ function generateGridChunks(lat: number, lng: number, radiusKm: number): { lat: 
 
 async function queryGeoapify(lat: number, lng: number, radiusKm: number, apiKey: string): Promise<any[]> {
   const radiusMeters = Math.round(radiusKm * 1000);
-  const url = `${GEOAPIFY_BASE}?categories=${CATEGORIES}&filter=circle:${lng},${lat},${radiusMeters}&bias=proximity:${lng},${lat}&limit=${RESULTS_PER_QUERY}&apiKey=${apiKey}`;
+  const url = `${GEOAPIFY_BASE}?categories=${CATEGORIES}&filter=circle:${lng},${lat},${radiusMeters}&bias=proximity:${lng},${lat}&limit=${RESULTS_PER_QUERY}&details=contact_extended,contact&apiKey=${apiKey}`;
 
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -162,14 +162,16 @@ function mapFeatureToBusiness(feature: any) {
   if (!lat || !lng) return null;
 
   // Geoapify Places data is OSM-derived, so raw OSM contact tags are often mirrored
-  // in datasource.raw — fall back to those when the top-level fields are absent.
+  // in datasource.raw — fall back to those when the normalized `contact` group
+  // (requested via `details=contact_extended,contact`) is absent.
   const raw = p.datasource?.raw || {};
-  const website = p.website || raw.website || raw['contact:website'] || null;
-  const phone = p.phone || raw.phone || raw['contact:phone'] || raw['contact:mobile'] || null;
-  const email = raw.email || raw['contact:email'] || null;
-  const facebook = raw['contact:facebook'] || raw.facebook || null;
-  const instagram = raw['contact:instagram'] || raw.instagram || null;
-  const whatsapp = raw['contact:whatsapp'] || raw.whatsapp || null;
+  const contact = p.contact || {};
+  const website = p.website || contact.website || raw.website || raw['contact:website'] || null;
+  const phone = p.phone || contact.phone || raw.phone || raw['contact:phone'] || raw['contact:mobile'] || null;
+  const email = contact.email || raw.email || raw['contact:email'] || null;
+  const facebook = contact.facebook || raw['contact:facebook'] || raw.facebook || null;
+  const instagram = contact.instagram || raw['contact:instagram'] || raw.instagram || null;
+  const whatsapp = contact.whatsapp || raw['contact:whatsapp'] || raw.whatsapp || null;
   const openingHours = p.opening_hours || raw.opening_hours || null;
   const hasWebsite = !!website;
 

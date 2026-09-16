@@ -5,9 +5,10 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // Relative base so the built app loads correctly both from a static host
-  // and from Electron's file:// protocol / Capacitor's local webview.
-  base: "./",
+  // Absolute base for normal web hosting and Capacitor's local webview (both
+  // serve the app from a proper root). Electron's file:// loading needs
+  // relative asset paths instead — only that build uses `--mode electron`.
+  base: mode === "electron" ? "./" : "/",
   server: {
     host: "::",
     port: 8080,

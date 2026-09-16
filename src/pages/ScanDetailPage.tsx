@@ -2,8 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '@/components/AppLayout';
-import { BusinessCard } from '@/components/BusinessCard';
+import { BusinessHeroCard } from '@/components/BusinessHeroCard';
+import { BusinessAuditPanel } from '@/components/BusinessAuditPanel';
+import { UpgradeNagDialog } from '@/components/UpgradeNagDialog';
 import { BusinessMap } from '@/components/BusinessMap';
+import { getBusinessVisual, getBusinessStory } from '@/lib/business-visuals';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Business } from '@/types';
@@ -11,9 +14,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useUsageLimits } from '@/hooks/useUsageLimits';
 import {
-  Map, List, X, ExternalLink, Phone, Globe, Star, Loader2,
-  ChevronLeft, ChevronRight, ArrowLeft, Navigation,
+  Map as MapIcon, List, X, ExternalLink, Phone, Globe, Star, Loader2,
+  ChevronLeft, ChevronRight, ArrowLeft, Navigation, Mail,
 } from 'lucide-react';
 
 const PAGE_SIZE = 5;
@@ -23,7 +27,7 @@ export default function ScanDetailPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [scanInfo, setScanInfo] = useState<{ lat: number; lng: number; radius: number; created_at: string } | null>(null);
@@ -32,9 +36,16 @@ export default function ScanDetailPage() {
   const [selected, setSelected] = useState<Business | null>(null);
   const [savingLead, setSavingLead] = useState(false);
   const [page, setPage] = useState(0);
+  const [userPlan, setUserPlan] = useState('free');
+  const [nag, setNag] = useState(false);
+  const { canAudit, incrementAudit } = useUsageLimits(userPlan);
 
   useEffect(() => {
     if (!user || !id) return;
+
+    supabase.functions.invoke('check-subscription').then(({ data }) => {
+      if (data?.plan) setUserPlan(data.plan);
+    }).catch(() => {});
 
     const fetchScan = async () => {
       const [scanRes, bizRes] = await Promise.all([
@@ -108,7 +119,7 @@ export default function ScanDetailPage() {
           <Badge variant="outline" className="text-[10px] border-score-good/40 text-score-good">{withWebsite} {t('scan.withSite')}</Badge>
           <div className="flex items-center gap-1">
             <Button size="sm" variant={view === 'list' ? 'secondary' : 'ghost'} onClick={() => setView('list')} className="h-7 w-7 p-0"><List className="w-3.5 h-3.5" /></Button>
-            <Button size="sm" variant={view === 'map' ? 'secondary' : 'ghost'} onClick={() => setView('map')} className="h-7 w-7 p-0"><Map className="w-3.5 h-3.5" /></Button>
+            <Button size="sm" variant={view === 'map' ? 'secondary' : 'ghost'} onClick={() => setView('map')} className="h-7 w-7 p-0"><MapIcon className="w-3.5 h-3.5" /></Button>
           </div>
         </div>
 
@@ -121,8 +132,18 @@ export default function ScanDetailPage() {
             )}
             {view === 'list' && (
               <>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-                  {pagedBusinesses.map(biz => (<BusinessCard key={biz.id} business={biz} onClick={() => handleSelectBusiness(biz)} />))}
+                <div className="space-y-3">
+                  {pagedBusinesses.map((biz, i) => (
+                    <BusinessHeroCard
+                      key={biz.id}
+                      business={biz}
+                      lang={lang as 'fr' | 'en'}
+                      rank={page * PAGE_SIZE + i}
+                      featured={page === 0 && i === 0}
+                      active={selected?.id === biz.id}
+                      onConsult={() => handleSelectBusiness(biz)}
+                    />
+                  ))}
                 </div>
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2 mt-4">
@@ -153,11 +174,23 @@ export default function ScanDetailPage() {
                     </Button>
                   </div>
 
+                  <div className="glass rounded-lg p-3">
+                    <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+                      {getBusinessStory({ name: selected.name, category: selected.category, address: selected.address, hasWebsite: selected.hasWebsite }, lang as 'fr' | 'en')}
+                    </p>
+                  </div>
+
                   <div className="glass rounded-lg p-3 space-y-1.5 text-xs sm:text-sm">
                     {selected.phone && (
                       <div className="flex items-center gap-2">
                         <Phone className="w-3 h-3 text-muted-foreground shrink-0" />
                         <a href={`tel:${selected.phone}`} className="hover:text-primary transition-colors truncate">{selected.phone}</a>
+                      </div>
+                    )}
+                    {selected.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <a href={`mailto:${selected.email}`} className="hover:text-primary transition-colors truncate">{selected.email}</a>
                       </div>
                     )}
                     {selected.website ? (
@@ -201,6 +234,14 @@ export default function ScanDetailPage() {
                     </div>
                   )}
 
+                  <BusinessAuditPanel
+                    business={selected}
+                    canAudit={canAudit}
+                    lang={lang as 'fr' | 'en'}
+                    onAuditGenerated={incrementAudit}
+                    onUpgradeClick={() => setNag(true)}
+                  />
+
                   <Button size="sm" className="w-full h-9 text-xs" onClick={() => handleSaveLead(selected)} disabled={savingLead}>
                     {savingLead && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
                     {t('scan.save')}
@@ -215,6 +256,7 @@ export default function ScanDetailPage() {
           </div>
         </div>
       </div>
+      <UpgradeNagDialog open={nag} onOpenChange={setNag} reason="audit" lang={lang as 'fr' | 'en'} />
     </AppLayout>
   );
 }

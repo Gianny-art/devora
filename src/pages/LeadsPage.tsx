@@ -8,7 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { getBusinessVisual, getNeedSummary, getNeedLevel } from '@/lib/business-visuals';
+import { BusinessAuditPanel } from '@/components/BusinessAuditPanel';
+import { UpgradeNagDialog } from '@/components/UpgradeNagDialog';
+import { getBusinessVisual, getNeedSummary, getNeedLevel, getBusinessStory } from '@/lib/business-visuals';
+import { useUsageLimits } from '@/hooks/useUsageLimits';
+import { Business } from '@/types';
 import {
   Users, Search, Trash2, ExternalLink, Globe, Phone, MapPin,
   Navigation, Star, X, ArrowRight, ChevronLeft,
@@ -32,6 +36,20 @@ type Lead = {
   lat: number | null;
   lng: number | null;
 };
+
+const leadToBusiness = (lead: Lead): Business => ({
+  id: lead.id,
+  name: lead.business_name,
+  address: lead.business_address || '',
+  phone: lead.business_phone || undefined,
+  category: lead.business_category || '',
+  rating: lead.business_rating || undefined,
+  website: lead.business_website || undefined,
+  lat: lead.lat || 0,
+  lng: lead.lng || 0,
+  hasWebsite: lead.has_website,
+  opportunityScore: lead.opportunity_score || undefined,
+});
 
 const statusColors: Record<string, string> = {
   new: 'border-score-none/40 text-score-none',
@@ -66,6 +84,9 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [userPlan, setUserPlan] = useState('free');
+  const [nag, setNag] = useState(false);
+  const { canAudit, incrementAudit } = useUsageLimits(userPlan);
 
   const fetchLeads = async () => {
     if (!user) return;
@@ -77,6 +98,10 @@ export default function LeadsPage() {
 
   useEffect(() => {
     fetchLeads();
+    if (!user) return;
+    supabase.functions.invoke('check-subscription').then(({ data }) => {
+      if (data?.plan) setUserPlan(data.plan);
+    }).catch(() => {});
   }, [user]);
 
   const updateStatus = async (id: string, status: string) => {
@@ -307,6 +332,12 @@ export default function LeadsPage() {
                     </div>
                   </div>
 
+                  <div className="glass rounded-lg p-3">
+                    <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+                      {getBusinessStory({ name: selectedLead.business_name, category: selectedLead.business_category, address: selectedLead.business_address, hasWebsite: selectedLead.has_website }, lang as 'fr' | 'en')}
+                    </p>
+                  </div>
+
                   <div className="glass rounded-lg p-3 space-y-1.5 text-xs sm:text-sm">
                     {selectedLead.business_phone && (
                       <div className="flex items-center gap-2">
@@ -350,6 +381,14 @@ export default function LeadsPage() {
                     </div>
                   )}
 
+                  <BusinessAuditPanel
+                    business={leadToBusiness(selectedLead)}
+                    canAudit={canAudit}
+                    lang={lang as 'fr' | 'en'}
+                    onAuditGenerated={incrementAudit}
+                    onUpgradeClick={() => setNag(true)}
+                  />
+
                   <div className="flex items-center gap-2">
                     <select value={selectedLead.status} onChange={e => updateStatus(selectedLead.id, e.target.value)}
                       className="flex-1 text-xs bg-secondary border border-border rounded-md px-2 py-2">
@@ -377,6 +416,7 @@ export default function LeadsPage() {
         description={lang === 'fr' ? 'Cette action est irréversible.' : 'This action is irreversible.'}
         onConfirm={confirmDelete}
       />
+      <UpgradeNagDialog open={nag} onOpenChange={setNag} reason="audit" lang={lang as 'fr' | 'en'} />
     </AppLayout>
   );
 }

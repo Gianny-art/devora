@@ -41,3 +41,5 @@ android/app/release/
 *.njsproj
 *.sln
 *.sw?
+.vercel
+.env*

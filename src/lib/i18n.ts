@@ -65,8 +65,6 @@ const translations: Record<string, Record<string, string>> = {
     'scan.loginToSave': 'Connectez-vous pour sauvegarder des leads.',
     'scan.leadSaved': 'Lead sauvegardé ✓',
     'scan.leadSavedDesc': 'a été ajouté à vos leads.',
-    'scan.dailyLimitReached': 'Limite quotidienne atteinte',
-    'scan.dailyLimitDesc': 'Vous avez utilisé vos 2 scans gratuits aujourd\'hui. Revenez demain ou passez au Premium.',
     'scan.scansToday': 'scans aujourd\'hui',
 
     // Dashboard
@@ -295,8 +293,6 @@ const translations: Record<string, Record<string, string>> = {
     'scan.loginToSave': 'Sign in to save leads.',
     'scan.leadSaved': 'Lead saved ✓',
     'scan.leadSavedDesc': 'has been added to your leads.',
-    'scan.dailyLimitReached': 'Daily limit reached',
-    'scan.dailyLimitDesc': 'You used your 2 free scans today. Come back tomorrow or upgrade to Premium.',
     'scan.scansToday': 'scans today',
 
     // Dashboard

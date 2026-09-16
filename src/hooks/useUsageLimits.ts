@@ -5,7 +5,8 @@ import { isAdmin, getPlanLimits } from '@/lib/admin';
 
 export function useUsageLimits(userPlan: string) {
   const { user } = useAuth();
-  const [dailyScanCount, setDailyScanCount] = useState(0);
+  const [scanCount, setScanCount] = useState(0);
+  const [auditCount, setAuditCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const userIsAdmin = isAdmin(user?.email);
@@ -13,7 +14,8 @@ export function useUsageLimits(userPlan: string) {
 
   useEffect(() => {
     if (!user) {
-      setDailyScanCount(0);
+      setScanCount(0);
+      setAuditCount(0);
       setLoading(false);
       return;
     }
@@ -24,13 +26,8 @@ export function useUsageLimits(userPlan: string) {
     if (!user) return;
     setLoading(true);
     try {
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-
-      const { count } = await supabase.from('scans').select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gte('created_at', todayStart.toISOString());
-      setDailyScanCount(count ?? 0);
+      const { count } = await supabase.from('scans').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
+      setScanCount(count ?? 0);
     } catch {
       // fallback
     } finally {
@@ -38,13 +35,15 @@ export function useUsageLimits(userPlan: string) {
     }
   };
 
-  const canScanToday = userIsAdmin || dailyScanCount < limits.maxDailyScans;
+  const canScan = userIsAdmin || scanCount < limits.maxScansTotal;
+  const canAudit = userIsAdmin || auditCount < limits.maxAudits;
 
-  const incrementDailyScan = () => setDailyScanCount(c => c + 1);
+  const incrementScan = () => setScanCount(c => c + 1);
+  const incrementAudit = () => setAuditCount(c => c + 1);
 
   return {
-    dailyScanCount, limits,
-    canScanToday,
-    incrementDailyScan, loading,
+    scanCount, auditCount, limits,
+    canScan, canAudit,
+    incrementScan, incrementAudit, loading,
   };
 }

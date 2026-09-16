@@ -11,10 +11,10 @@ export const PLAN_RADIUS_LIMITS: Record<string, number> = {
   premium_plus: 500,
 };
 
-export const PLAN_LIMITS: Record<string, { maxDailyScans: number }> = {
-  free: { maxDailyScans: 2 },
-  premium: { maxDailyScans: Infinity },
-  premium_plus: { maxDailyScans: Infinity },
+export const PLAN_LIMITS: Record<string, { maxScansTotal: number; maxAudits: number }> = {
+  free: { maxScansTotal: 2, maxAudits: 0 },
+  premium: { maxScansTotal: Infinity, maxAudits: Infinity },
+  premium_plus: { maxScansTotal: Infinity, maxAudits: Infinity },
 };
 
 export const FREE_TIER_LIMITS = PLAN_LIMITS.free;

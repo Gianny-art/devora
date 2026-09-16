@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "electron:dev": "vite dev & electron .",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "vite build --mode electron && electron-builder"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

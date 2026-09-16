@@ -1,6 +1,6 @@
 import { AppLayout } from '@/components/AppLayout';
 import { motion } from 'framer-motion';
-import { Radar, Globe, TrendingUp, Users, ArrowUpRight, Compass, ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react';
+import { Radar, Globe, TrendingUp, Users, ArrowUpRight, Compass, ChevronLeft, ChevronRight, Clock, MapPin, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -138,6 +138,23 @@ export default function DashboardPage() {
             </motion.div>
           ))}
         </div>
+
+        <Link to="/suggestions" className="block mb-8 sm:mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="group flex items-center gap-4 rounded-2xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors p-4 sm:p-5"
+          >
+            <div className="w-11 h-11 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-sm sm:text-base">Suggestions intelligentes</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Découvrez les secteurs les plus prometteurs pour vos prochains scans.</p>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </motion.div>
+        </Link>
 
         {/* Scan history horizontal carousel */}
         {savedScans.length > 0 ? (

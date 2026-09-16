@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '@/components/AppLayout';
 import { RadarScanner } from '@/components/RadarScanner';
 import { BusinessHeroCard } from '@/components/BusinessHeroCard';
-import { getBusinessVisual } from '@/lib/business-visuals';
+import { BusinessAuditPanel } from '@/components/BusinessAuditPanel';
+import { UpgradeNagDialog } from '@/components/UpgradeNagDialog';
+import { getBusinessVisual, getBusinessStory } from '@/lib/business-visuals';
+import { recordInterest } from '@/lib/interest';
 
 import { BusinessMap } from '@/components/BusinessMap';
 import { useScanner } from '@/hooks/use-scanner';
@@ -17,8 +20,8 @@ import { useToast } from '@/hooks/use-toast';
 import { isAdmin, getAvailableRadii } from '@/lib/admin';
 import { useUsageLimits } from '@/hooks/useUsageLimits';
 import {
-  Map, List, SlidersHorizontal, X, ExternalLink, Phone, Globe, Star, Loader2,
-  ChevronLeft, ChevronRight, Lock, ArrowUp, Navigation,
+  Map as MapIcon, List, SlidersHorizontal, X, ExternalLink, Phone, Globe, Star, Loader2,
+  ChevronLeft, ChevronRight, Lock, ArrowUp, Navigation, Mail,
 } from 'lucide-react';
 
 const PAGE_SIZE = 8;
@@ -34,6 +37,9 @@ export default function ScanPage() {
   const [savingLead, setSavingLead] = useState(false);
   const [page, setPage] = useState(0);
   const [userPlan, setUserPlan] = useState('free');
+  const [showAll, setShowAll] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [nag, setNag] = useState<'scan' | 'audit' | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -45,18 +51,33 @@ export default function ScanPage() {
   const userIsAdmin = isAdmin(user?.email);
   const availableRadii = getAvailableRadii(userPlan, user?.email);
   const {
-    dailyScanCount, limits,
-    canScanToday,
-    incrementDailyScan,
+    scanCount, limits,
+    canScan, canAudit,
+    incrementScan, incrementAudit,
   } = useUsageLimits(userPlan);
 
-  const sorted = useMemo(
-    () => [...businesses].sort((a, b) => (b.opportunityScore || 0) - (a.opportunityScore || 0)),
-    [businesses]
-  );
+  // Only businesses that actually need digital help by default (no website),
+  // with an explicit toggle to also see the ones that already have a site.
+  const needsHelp = useMemo(() => businesses.filter(b => showAll || !b.hasWebsite), [businesses, showAll]);
 
-  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
-  const pagedBusinesses = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const b of needsHelp) {
+      const label = getBusinessVisual(b.category).label[lang as 'fr' | 'en'];
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [needsHelp, lang]);
+
+  const filtered = useMemo(() => {
+    const base = categoryFilter
+      ? needsHelp.filter(b => getBusinessVisual(b.category).label[lang as 'fr' | 'en'] === categoryFilter)
+      : needsHelp;
+    return [...base].sort((a, b) => (b.opportunityScore || 0) - (a.opportunityScore || 0));
+  }, [needsHelp, categoryFilter, lang]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const pagedBusinesses = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const noWebsite = businesses.filter(b => !b.hasWebsite).length;
   const withWebsite = businesses.filter(b => b.hasWebsite).length;
@@ -83,6 +104,7 @@ export default function ScanPage() {
         status: 'new',
       });
       if (error) throw error;
+      recordInterest(getBusinessVisual(biz.category).label[lang as 'fr' | 'en'], 3);
       toast({ title: t('scan.leadSaved'), description: `${biz.name} ${t('scan.leadSavedDesc')}` });
     } catch (err: any) {
       toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
@@ -100,6 +122,7 @@ export default function ScanPage() {
 
   const handleSelectBusiness = (biz: Business) => {
     setSelected(biz);
+    recordInterest(getBusinessVisual(biz.category).label[lang as 'fr' | 'en'], 1);
     setTimeout(() => smoothScrollTo('business-detail'), 120);
   };
 
@@ -107,14 +130,26 @@ export default function ScanPage() {
 
   const handleNewScan = () => {
     if (!radius) return;
-    if (!canScanToday) {
-      toast({ title: t('scan.dailyLimitReached'), description: t('scan.dailyLimitDesc'), variant: 'destructive' });
+    if (!canScan) {
+      setNag('scan');
       return;
     }
     startScan(radius, user?.id);
-    incrementDailyScan();
+    incrementScan();
     setSelected(null);
     setPage(0);
+    setShowAll(false);
+    setCategoryFilter(null);
+  };
+
+  const handleFirstScan = () => {
+    if (!radius) return;
+    if (!canScan) {
+      setNag('scan');
+      return;
+    }
+    startScan(radius, user?.id);
+    incrementScan();
   };
 
   return (
@@ -129,8 +164,8 @@ export default function ScanPage() {
 
             <RadarScanner
               scanning={scanning}
-              onScan={() => { if (radius && canScanToday) { startScan(radius, user?.id); incrementDailyScan(); } }}
-              disabled={!radius || !canScanToday}
+              onScan={handleFirstScan}
+              disabled={!radius}
               label={lang === 'fr' ? 'Scanner' : 'Scan'}
               scanningLabel={t('scan.scanning')}
             />
@@ -164,7 +199,7 @@ export default function ScanPage() {
               )}
               {userPlan === 'free' && (
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  {dailyScanCount}/{limits.maxDailyScans} {t('scan.scansToday')}
+                  {scanCount}/{limits.maxScansTotal} {lang === 'fr' ? 'scans utilisés' : 'scans used'}
                 </p>
               )}
               {!userIsAdmin && userPlan === 'free' && (
@@ -201,7 +236,7 @@ export default function ScanPage() {
             )}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
               <h2 className="text-lg sm:text-xl font-bold mr-auto">
-                {businesses.length} {t('scan.businesses')}
+                {filtered.length} {t('scan.businesses')}
               </h2>
               <Badge variant="outline" className="text-[10px] sm:text-xs border-score-none/40 text-score-none">
                 {noWebsite} {t('scan.noSite')}
@@ -214,7 +249,7 @@ export default function ScanPage() {
                   <List className="w-3.5 h-3.5" />
                 </Button>
                 <Button size="sm" variant={view === 'map' ? 'secondary' : 'ghost'} onClick={() => setView('map')} className="h-7 w-7 p-0">
-                  <Map className="w-3.5 h-3.5" />
+                  <MapIcon className="w-3.5 h-3.5" />
                 </Button>
               </div>
               <Button size="sm" variant="outline" onClick={handleNewScan} className="h-7 text-xs">
@@ -222,11 +257,47 @@ export default function ScanPage() {
               </Button>
             </div>
 
+            {/* Category filter chips — most critical business types surface first */}
+            {categories.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                <button
+                  onClick={() => setCategoryFilter(null)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                    !categoryFilter ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
+                  }`}
+                >
+                  {lang === 'fr' ? 'Tous' : 'All'} ({needsHelp.length})
+                </button>
+                {categories.map(([label, count]) => (
+                  <button
+                    key={label}
+                    onClick={() => setCategoryFilter(categoryFilter === label ? null : label)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                      categoryFilter === label ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
+                    }`}
+                  >
+                    {label} ({count})
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {withWebsite > 0 && (
+              <button
+                onClick={() => { setShowAll(v => !v); setPage(0); }}
+                className="text-[11px] text-muted-foreground hover:text-primary underline underline-offset-2 mb-4 block"
+              >
+                {showAll
+                  ? (lang === 'fr' ? 'Masquer celles qui ont déjà un site' : 'Hide the ones that already have a website')
+                  : (lang === 'fr' ? `Afficher aussi celles qui ont déjà un site (${withWebsite})` : `Also show the ones that already have a website (${withWebsite})`)}
+              </button>
+            )}
+
             <div id="scan-results-list" className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6">
               <div className="lg:col-span-2">
                 {view === 'map' && position && (
                   <div className="h-[300px] sm:h-[500px]">
-                    <BusinessMap businesses={businesses} center={position} onBusinessClick={handleSelectBusiness} />
+                    <BusinessMap businesses={filtered} center={position} onBusinessClick={handleSelectBusiness} />
                   </div>
                 )}
                 {view === 'list' && (
@@ -258,7 +329,7 @@ export default function ScanPage() {
                     )}
                   </>
                 )}
-                {businesses.length === 0 && (
+                {filtered.length === 0 && (
                   <div className="glass rounded-lg p-8 sm:p-12 text-center">
                     <p className="text-sm text-muted-foreground">{t('scan.noResults')}</p>
                   </div>
@@ -299,11 +370,23 @@ export default function ScanPage() {
                         </div>
                       </div>
 
+                      <div className="glass rounded-lg p-3">
+                        <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+                          {getBusinessStory({ name: selected.name, category: selected.category, address: selected.address, hasWebsite: selected.hasWebsite }, lang as 'fr' | 'en')}
+                        </p>
+                      </div>
+
                       <div className="glass rounded-lg p-3 space-y-1.5 text-xs sm:text-sm">
                         {selected.phone && (
                           <div className="flex items-center gap-2">
                             <Phone className="w-3 h-3 text-muted-foreground shrink-0" />
                             <a href={`tel:${selected.phone}`} className="hover:text-primary transition-colors truncate">{selected.phone}</a>
+                          </div>
+                        )}
+                        {selected.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <a href={`mailto:${selected.email}`} className="hover:text-primary transition-colors truncate">{selected.email}</a>
                           </div>
                         )}
                         {selected.website ? (
@@ -352,6 +435,14 @@ export default function ScanPage() {
                         </div>
                       )}
 
+                      <BusinessAuditPanel
+                        business={selected}
+                        canAudit={canAudit}
+                        lang={lang as 'fr' | 'en'}
+                        onAuditGenerated={incrementAudit}
+                        onUpgradeClick={() => setNag('audit')}
+                      />
+
                       <Button size="sm" className="w-full h-9 text-xs" onClick={() => handleSaveLead(selected)} disabled={savingLead}>
                         {savingLead && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
                         {t('scan.save')}
@@ -370,7 +461,7 @@ export default function ScanPage() {
               <div className="mt-6 glass rounded-lg p-4 text-center border-primary/20">
                 <p className="text-xs sm:text-sm mb-2">
                   <ArrowUp className="w-3.5 h-3.5 inline mr-1" />
-                  {t('scan.freePlanUsage')} : <strong>{dailyScanCount}/{limits.maxDailyScans}</strong> {t('scan.scansToday')}.
+                  {t('scan.freePlanUsage')} : <strong>{scanCount}/{limits.maxScansTotal}</strong> {lang === 'fr' ? 'scans utilisés' : 'scans used'}.
                   {' '}{t('scan.upgradePremium')}
                 </p>
                 <Button size="sm" asChild>
@@ -381,6 +472,8 @@ export default function ScanPage() {
           </motion.div>
         )}
       </div>
+
+      <UpgradeNagDialog open={!!nag} onOpenChange={(open) => !open && setNag(null)} reason={nag || 'scan'} lang={lang as 'fr' | 'en'} />
     </AppLayout>
   );
 }

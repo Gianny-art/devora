@@ -55,6 +55,29 @@ export function getNeedSummary(
   return `${sector} · présence correcte, optimisations possibles.`;
 }
 
+/** Short contextual blurb shown before the technical details on mobile — why this business matters. */
+export function getBusinessStory(
+  opts: { name: string; category?: string | null; address?: string | null; hasWebsite: boolean },
+  lang: 'fr' | 'en' = 'fr'
+): string {
+  const sector = getBusinessVisual(opts.category).label[lang].toLowerCase();
+  const place = opts.address ? opts.address.split(',').slice(-2, -1)[0]?.trim() : null;
+
+  if (lang === 'en') {
+    const location = place ? ` in ${place}` : ' in the area';
+    if (!opts.hasWebsite) {
+      return `${opts.name} is a local ${sector} business${location} serving customers every day — without any online presence. That means every customer who searches for "${sector} near me" finds a competitor instead. A first website or listing could change that immediately.`;
+    }
+    return `${opts.name} is a local ${sector} business${location} that already has some online presence. A closer look could reveal quick wins to attract even more customers.`;
+  }
+
+  const location = place ? ` à ${place}` : ' dans le quartier';
+  if (!opts.hasWebsite) {
+    return `${opts.name} est un commerce local du secteur ${sector}${location}, qui sert ses clients au quotidien — sans aucune présence en ligne. Résultat : chaque client qui cherche "${sector} près de moi" tombe sur un concurrent à la place. Un premier site ou une fiche en ligne pourrait changer la donne immédiatement.`;
+  }
+  return `${opts.name} est un commerce local du secteur ${sector}${location}, qui dispose déjà d'une présence en ligne. Un examen plus poussé pourrait révéler des leviers rapides pour attirer encore plus de clients.`;
+}
+
 export function getNeedLevel(hasWebsite: boolean, score?: number | null): { fr: string; en: string; tone: 'critical' | 'high' | 'medium' | 'low' } {
   const s = score || 0;
   if (!hasWebsite) return { fr: 'Besoin critique', en: 'Critical need', tone: 'critical' };
