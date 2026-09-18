@@ -126,7 +126,7 @@ export default function LegalPage() {
               <h3 className="font-semibold text-foreground text-sm">1. Objet</h3>
               <p>Les présentes CGU régissent l'utilisation de la plateforme Devora.</p>
               <h3 className="font-semibold text-foreground text-sm">2. Description du service</h3>
-              <p>Devora permet de scanner des entreprises locales, d'identifier celles sans site web, et d'organiser vos prospects dans un CRM dédié.</p>
+              <p>Devora permet de scanner des entreprises locales, d'identifier celles sans identité numérique, et d'organiser vos prospects dans un CRM dédié.</p>
               <h3 className="font-semibold text-foreground text-sm">3. Inscription</h3>
               <p>L'inscription nécessite une adresse email valide.</p>
               <h3 className="font-semibold text-foreground text-sm">4. Plans et paiement</h3>

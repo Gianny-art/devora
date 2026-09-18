@@ -38,8 +38,8 @@ export default function AboutPage() {
             Trouvez des clients.<br /><span className="text-gradient">Automatiquement.</span>
           </h1>
           <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base">
-            Devora scanne les entreprises locales, identifie celles avec un site web
-            médiocre ou absent, et vous aide à organiser vos prospects dans un CRM dédié.
+            Devora scanne les entreprises locales, identifie celles qui manquent
+            d'identité numérique, et vous aide à organiser vos prospects dans un CRM dédié.
           </p>
         </motion.section>
 
