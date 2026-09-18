@@ -7,14 +7,12 @@ export function isAdmin(email?: string | null): boolean {
 
 export const PLAN_RADIUS_LIMITS: Record<string, number> = {
   free: 10,
-  premium: 50,
-  premium_plus: 500,
+  premium: 500,
 };
 
 export const PLAN_LIMITS: Record<string, { maxScansTotal: number; maxAudits: number }> = {
   free: { maxScansTotal: 2, maxAudits: 0 },
   premium: { maxScansTotal: Infinity, maxAudits: Infinity },
-  premium_plus: { maxScansTotal: Infinity, maxAudits: Infinity },
 };
 
 export const FREE_TIER_LIMITS = PLAN_LIMITS.free;
@@ -32,4 +30,10 @@ export function getAvailableRadii(plan: string, email?: string | null): number[]
 
 export function getPlanLimits(plan: string) {
   return PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+}
+
+/** Admin accounts always have full (Premium-equivalent) access. */
+export function isPremium(plan: string, email?: string | null): boolean {
+  if (isAdmin(email)) return true;
+  return plan === 'premium';
 }

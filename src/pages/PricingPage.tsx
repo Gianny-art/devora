@@ -11,7 +11,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-const tiers: PlanTier[] = ['free', 'premium', 'premium_plus'];
+const tiers: PlanTier[] = ['free', 'premium'];
 type Provider = 'campay' | 'maviance';
 type PaymentState = 'idle' | 'form' | 'pending' | 'success' | 'failed' | 'timeout';
 
@@ -107,10 +107,10 @@ export default function PricingPage() {
           <p className="text-muted-foreground">{t('pricing.subtitle')}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
           {tiers.map((tier, i) => {
             const plan = PLAN_FEATURES[tier];
-            const isPremiumPlus = tier === 'premium_plus';
+            const isPremiumTier = tier === 'premium';
             const isCurrent = tier === currentTier;
             const features = lang === 'fr' ? plan.featuresFr : plan.features;
             const isPaymentOpen = activeTier === tier;
@@ -118,7 +118,7 @@ export default function PricingPage() {
             return (
               <motion.div
                 key={tier}
-                className={`glass rounded-lg p-6 flex flex-col ${isPremiumPlus ? 'border-primary/50 ring-1 ring-primary/20' : ''} ${isCurrent ? 'ring-2 ring-primary' : ''}`}
+                className={`glass rounded-lg p-6 flex flex-col ${isPremiumTier ? 'border-primary/50 ring-1 ring-primary/20' : ''} ${isCurrent ? 'ring-2 ring-primary' : ''}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
@@ -128,7 +128,7 @@ export default function PricingPage() {
                     {t('pricing.yourPlan')}
                   </Badge>
                 )}
-                {isPremiumPlus && !isCurrent && (
+                {isPremiumTier && !isCurrent && (
                   <Badge className="self-start mb-3 bg-primary/10 text-primary border-primary/30">
                     <Zap className="w-3 h-3 mr-1" /> {t('pricing.popular')}
                   </Badge>
@@ -211,7 +211,7 @@ export default function PricingPage() {
                   </div>
                 ) : (
                   <Button
-                    variant={isPremiumPlus ? 'scanner' : 'outline'}
+                    variant={isPremiumTier ? 'scanner' : 'outline'}
                     size="sm"
                     className="w-full"
                     disabled={isCurrent}

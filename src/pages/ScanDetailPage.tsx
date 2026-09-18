@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { BusinessHeroCard } from '@/components/BusinessHeroCard';
 import { BusinessAuditPanel } from '@/components/BusinessAuditPanel';
 import { UpgradeNagDialog } from '@/components/UpgradeNagDialog';
+import { ExportScanButton } from '@/components/ExportScanButton';
 import { BusinessMap } from '@/components/BusinessMap';
 import { getBusinessVisual, getBusinessStory } from '@/lib/business-visuals';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,9 +16,10 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUsageLimits } from '@/hooks/useUsageLimits';
+import { isPremium as checkIsPremium } from '@/lib/admin';
 import {
   Map as MapIcon, List, X, ExternalLink, Phone, Globe, Star, Loader2,
-  ChevronLeft, ChevronRight, ArrowLeft, Navigation, Mail,
+  ChevronLeft, ChevronRight, ArrowLeft, Navigation, Mail, MapPin,
 } from 'lucide-react';
 
 const PAGE_SIZE = 5;
@@ -37,8 +39,9 @@ export default function ScanDetailPage() {
   const [savingLead, setSavingLead] = useState(false);
   const [page, setPage] = useState(0);
   const [userPlan, setUserPlan] = useState('free');
-  const [nag, setNag] = useState(false);
+  const [nag, setNag] = useState<'audit' | 'export' | null>(null);
   const { canAudit, incrementAudit } = useUsageLimits(userPlan);
+  const isPremiumUser = checkIsPremium(userPlan, user?.email);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -55,7 +58,8 @@ export default function ScanDetailPage() {
       if (scanRes.data) setScanInfo(scanRes.data);
       if (bizRes.data) {
         setBusinesses(bizRes.data.map((b: any) => ({
-          id: b.id, name: b.name, address: b.address, phone: b.phone || undefined,
+          id: b.id, name: b.name, address: b.address, city: b.city || undefined, district: b.district || undefined,
+          phone: b.phone || undefined, email: b.email || undefined,
           category: b.category, rating: b.rating || undefined, website: b.website || undefined,
           lat: b.lat, lng: b.lng, hasWebsite: b.has_website, opportunityScore: b.opportunity_score || undefined,
         })));
@@ -65,7 +69,22 @@ export default function ScanDetailPage() {
     fetchScan();
   }, [user, id]);
 
-  const sorted = useMemo(() => [...businesses].sort((a, b) => (b.opportunityScore || 0) - (a.opportunityScore || 0)), [businesses]);
+  const [showAll, setShowAll] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+
+  const needsHelp = useMemo(() => businesses.filter(b => showAll || !b.hasWebsite), [businesses, showAll]);
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const b of needsHelp) {
+      const label = getBusinessVisual(b.category).label[lang as 'fr' | 'en'];
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [needsHelp, lang]);
+  const sorted = useMemo(() => {
+    const base = categoryFilter ? needsHelp.filter(b => getBusinessVisual(b.category).label[lang as 'fr' | 'en'] === categoryFilter) : needsHelp;
+    return [...base].sort((a, b) => (b.opportunityScore || 0) - (a.opportunityScore || 0));
+  }, [needsHelp, categoryFilter, lang]);
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
   const pagedBusinesses = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const noWebsite = businesses.filter(b => !b.hasWebsite).length;
@@ -77,7 +96,8 @@ export default function ScanDetailPage() {
     try {
       const { error } = await supabase.from('leads').insert({
         user_id: user.id, business_name: biz.name, business_address: biz.address,
-        business_phone: biz.phone || null, business_category: biz.category,
+        business_city: biz.city || null, business_district: biz.district || null,
+        business_phone: biz.phone || null, business_email: biz.email || null, business_category: biz.category,
         business_rating: biz.rating || null, business_website: biz.website || null,
         has_website: biz.hasWebsite, opportunity_score: biz.opportunityScore || null,
         lat: biz.lat, lng: biz.lng, status: 'new',
@@ -121,13 +141,56 @@ export default function ScanDetailPage() {
             <Button size="sm" variant={view === 'list' ? 'secondary' : 'ghost'} onClick={() => setView('list')} className="h-7 w-7 p-0"><List className="w-3.5 h-3.5" /></Button>
             <Button size="sm" variant={view === 'map' ? 'secondary' : 'ghost'} onClick={() => setView('map')} className="h-7 w-7 p-0"><MapIcon className="w-3.5 h-3.5" /></Button>
           </div>
+          {scanInfo && (
+            <ExportScanButton
+              businesses={sorted}
+              meta={{ date: new Date(scanInfo.created_at), lat: scanInfo.lat, lng: scanInfo.lng, radiusKm: scanInfo.radius }}
+              canExport={isPremiumUser}
+              lang={lang as 'fr' | 'en'}
+              onUpgradeClick={() => setNag('export')}
+            />
+          )}
         </div>
+
+        {categories.length > 1 && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-3">
+            <button
+              onClick={() => setCategoryFilter(null)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                !categoryFilter ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
+              }`}
+            >
+              {lang === 'fr' ? 'Tous' : 'All'} ({needsHelp.length})
+            </button>
+            {categories.map(([label, count]) => (
+              <button
+                key={label}
+                onClick={() => setCategoryFilter(categoryFilter === label ? null : label)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                  categoryFilter === label ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
+                }`}
+              >
+                {label} ({count})
+              </button>
+            ))}
+          </div>
+        )}
+        {withWebsite > 0 && (
+          <button
+            onClick={() => { setShowAll(v => !v); setPage(0); }}
+            className="text-[11px] text-muted-foreground hover:text-primary underline underline-offset-2 mb-4 block"
+          >
+            {showAll
+              ? (lang === 'fr' ? 'Masquer celles qui ont déjà un site' : 'Hide the ones that already have a website')
+              : (lang === 'fr' ? `Afficher aussi celles qui ont déjà un site (${withWebsite})` : `Also show the ones that already have a website (${withWebsite})`)}
+          </button>
+        )}
 
         <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2">
             {view === 'map' && scanInfo && (
               <div className="h-[300px] sm:h-[500px]">
-                <BusinessMap businesses={businesses} center={{ lat: scanInfo.lat, lng: scanInfo.lng }} onBusinessClick={handleSelectBusiness} />
+                <BusinessMap businesses={sorted} center={{ lat: scanInfo.lat, lng: scanInfo.lng }} onBusinessClick={handleSelectBusiness} />
               </div>
             )}
             {view === 'list' && (
@@ -181,6 +244,12 @@ export default function ScanDetailPage() {
                   </div>
 
                   <div className="glass rounded-lg p-3 space-y-1.5 text-xs sm:text-sm">
+                    {(selected.district || selected.city) && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <span className="truncate">{[selected.district, selected.city].filter(Boolean).join(', ')}</span>
+                      </div>
+                    )}
                     {selected.phone && (
                       <div className="flex items-center gap-2">
                         <Phone className="w-3 h-3 text-muted-foreground shrink-0" />
@@ -239,7 +308,7 @@ export default function ScanDetailPage() {
                     canAudit={canAudit}
                     lang={lang as 'fr' | 'en'}
                     onAuditGenerated={incrementAudit}
-                    onUpgradeClick={() => setNag(true)}
+                    onUpgradeClick={() => setNag('audit')}
                   />
 
                   <Button size="sm" className="w-full h-9 text-xs" onClick={() => handleSaveLead(selected)} disabled={savingLead}>
@@ -256,7 +325,7 @@ export default function ScanDetailPage() {
           </div>
         </div>
       </div>
-      <UpgradeNagDialog open={nag} onOpenChange={setNag} reason="audit" lang={lang as 'fr' | 'en'} />
+      <UpgradeNagDialog open={!!nag} onOpenChange={(open) => !open && setNag(null)} reason={nag || 'audit'} lang={lang as 'fr' | 'en'} />
     </AppLayout>
   );
 }

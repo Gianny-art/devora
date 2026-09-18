@@ -2,6 +2,8 @@ export type Business = {
   id: string;
   name: string;
   address: string;
+  city?: string;
+  district?: string;
   phone?: string;
   email?: string;
   facebook?: string;
@@ -38,7 +40,7 @@ export type ScanResult = {
   created_at: string;
 };
 
-export type PlanTier = 'free' | 'premium' | 'premium_plus';
+export type PlanTier = 'free' | 'premium';
 
 export const PLAN_FEATURES: Record<PlanTier, { name: string; price: string; amountXaf: number; features: string[]; scanScope: string; featuresFr: string[] }> = {
   free: {
@@ -53,16 +55,8 @@ export const PLAN_FEATURES: Record<PlanTier, { name: string; price: string; amou
     name: 'Premium',
     price: '5 000 XAF/mois',
     amountXaf: 5000,
-    features: ['Everything in Free', 'Unlimited scans', 'Scan up to 50km', 'Business audit + WhatsApp outreach', 'Smart suggestions', 'Team collaboration'],
-    featuresFr: ['Tout Free inclus', 'Scans illimités', 'Scan jusqu\'à 50km', 'Audit entreprise + envoi WhatsApp', 'Suggestions intelligentes', 'Collaboration en équipe'],
-    scanScope: '0-50 km',
-  },
-  premium_plus: {
-    name: 'Premium Plus',
-    price: '10 000 XAF/mois',
-    amountXaf: 10000,
-    features: ['Everything in Premium', 'Worldwide scanning', 'Unlimited team projects', 'Priority support'],
-    featuresFr: ['Tout Premium inclus', 'Scan mondial illimité', 'Projets d\'équipe illimités', 'Support prioritaire'],
+    features: ['Everything in Free', 'Unlimited scans, worldwide', 'Business audit + WhatsApp outreach', 'Smart suggestions', 'Export scans (PDF/Excel)', 'Team collaboration', 'Priority support'],
+    featuresFr: ['Tout Free inclus', 'Scans illimités, dans le monde entier', 'Audit entreprise + envoi WhatsApp', 'Suggestions intelligentes', 'Export des scans (PDF/Excel)', 'Collaboration en équipe', 'Support prioritaire'],
     scanScope: 'Monde entier',
   },
 };

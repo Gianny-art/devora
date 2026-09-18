@@ -8,7 +8,6 @@ const corsHeaders = {
 // Keep in sync with PLAN_FEATURES.amountXaf in src/types/index.ts
 const TIER_AMOUNTS: Record<string, number> = {
   premium: 5000,
-  premium_plus: 10000,
 };
 
 Deno.serve(async (req) => {

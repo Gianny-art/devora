@@ -5,6 +5,7 @@ import { RadarScanner } from '@/components/RadarScanner';
 import { BusinessHeroCard } from '@/components/BusinessHeroCard';
 import { BusinessAuditPanel } from '@/components/BusinessAuditPanel';
 import { UpgradeNagDialog } from '@/components/UpgradeNagDialog';
+import { ExportScanButton } from '@/components/ExportScanButton';
 import { getBusinessVisual, getBusinessStory } from '@/lib/business-visuals';
 import { recordInterest } from '@/lib/interest';
 
@@ -17,11 +18,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { isAdmin, getAvailableRadii } from '@/lib/admin';
+import { isAdmin, getAvailableRadii, isPremium as checkIsPremium } from '@/lib/admin';
 import { useUsageLimits } from '@/hooks/useUsageLimits';
 import {
   Map as MapIcon, List, SlidersHorizontal, X, ExternalLink, Phone, Globe, Star, Loader2,
-  ChevronLeft, ChevronRight, Lock, ArrowUp, Navigation, Mail,
+  ChevronLeft, ChevronRight, Lock, ArrowUp, Navigation, Mail, MapPin,
 } from 'lucide-react';
 
 const PAGE_SIZE = 8;
@@ -39,7 +40,8 @@ export default function ScanPage() {
   const [userPlan, setUserPlan] = useState('free');
   const [showAll, setShowAll] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [nag, setNag] = useState<'scan' | 'audit' | null>(null);
+  const [nag, setNag] = useState<'scan' | 'audit' | 'export' | null>(null);
+  const [scanTimestamp, setScanTimestamp] = useState<Date>(new Date());
 
   useEffect(() => {
     if (!user) return;
@@ -49,6 +51,7 @@ export default function ScanPage() {
   }, [user]);
 
   const userIsAdmin = isAdmin(user?.email);
+  const isPremiumUser = checkIsPremium(userPlan, user?.email);
   const availableRadii = getAvailableRadii(userPlan, user?.email);
   const {
     scanCount, limits,
@@ -93,7 +96,10 @@ export default function ScanPage() {
         user_id: user.id,
         business_name: biz.name,
         business_address: biz.address,
+        business_city: biz.city || null,
+        business_district: biz.district || null,
         business_phone: biz.phone || null,
+        business_email: biz.email || null,
         business_category: biz.category,
         business_rating: biz.rating || null,
         business_website: biz.website || null,
@@ -136,6 +142,7 @@ export default function ScanPage() {
     }
     startScan(radius, user?.id);
     incrementScan();
+    setScanTimestamp(new Date());
     setSelected(null);
     setPage(0);
     setShowAll(false);
@@ -150,6 +157,7 @@ export default function ScanPage() {
     }
     startScan(radius, user?.id);
     incrementScan();
+    setScanTimestamp(new Date());
   };
 
   return (
@@ -255,6 +263,15 @@ export default function ScanPage() {
               <Button size="sm" variant="outline" onClick={handleNewScan} className="h-7 text-xs">
                 <SlidersHorizontal className="w-3 h-3 mr-1" /> {t('scan.rescan')}
               </Button>
+              {position && (
+                <ExportScanButton
+                  businesses={filtered}
+                  meta={{ date: scanTimestamp, lat: position.lat, lng: position.lng, radiusKm: radius || 0 }}
+                  canExport={isPremiumUser}
+                  lang={lang as 'fr' | 'en'}
+                  onUpgradeClick={() => setNag('export')}
+                />
+              )}
             </div>
 
             {/* Category filter chips — most critical business types surface first */}
@@ -377,6 +394,12 @@ export default function ScanPage() {
                       </div>
 
                       <div className="glass rounded-lg p-3 space-y-1.5 text-xs sm:text-sm">
+                        {(selected.district || selected.city) && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="truncate">{[selected.district, selected.city].filter(Boolean).join(', ')}</span>
+                          </div>
+                        )}
                         {selected.phone && (
                           <div className="flex items-center gap-2">
                             <Phone className="w-3 h-3 text-muted-foreground shrink-0" />

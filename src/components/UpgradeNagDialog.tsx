@@ -6,28 +6,38 @@ import { useNavigate } from 'react-router-dom';
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  reason: 'scan' | 'audit';
+  reason: 'scan' | 'audit' | 'export' | 'suggestions';
   lang: 'fr' | 'en';
 }
 
+const COPY: Record<Props['reason'], { fr: [string, string]; en: [string, string] }> = {
+  scan: {
+    fr: ['Vos 2 scans gratuits sont utilisés', 'Passez à Premium pour scanner sans limite, partout dans le monde.'],
+    en: ['Your 2 free scans are used up', 'Upgrade to Premium for unlimited scanning, worldwide.'],
+  },
+  audit: {
+    fr: ["L'audit est une fonctionnalité Premium", "Débloquez l'audit de présence numérique et l'envoi WhatsApp prêt à l'emploi avec Premium."],
+    en: ['Audit is a Premium feature', 'Unlock the digital presence audit and one-click WhatsApp outreach with Premium.'],
+  },
+  export: {
+    fr: ["L'export est une fonctionnalité Premium", 'Exportez vos scans en PDF ou Excel, avec toutes les coordonnées, en un clic.'],
+    en: ['Export is a Premium feature', 'Export your scans to PDF or Excel, with full contact details, in one click.'],
+  },
+  suggestions: {
+    fr: ['Suggestions intelligentes', 'Fonctionnalité Premium : Devora analyse vos habitudes de scan et vous recommande les secteurs les plus prometteurs.'],
+    en: ['Smart suggestions', 'Premium feature: Devora analyzes your scanning habits and recommends the most promising sectors.'],
+  },
+};
+
+const PERKS: Record<'fr' | 'en', string[]> = {
+  fr: ['Scans illimités, dans le monde entier', 'Audit entreprise + envoi WhatsApp', 'Export PDF / Excel', 'Suggestions intelligentes', 'Collaboration en équipe'],
+  en: ['Unlimited scans, worldwide', 'Business audit + WhatsApp outreach', 'PDF / Excel export', 'Smart suggestions', 'Team collaboration'],
+};
+
 export function UpgradeNagDialog({ open, onOpenChange, reason, lang }: Props) {
   const navigate = useNavigate();
-
-  const title = lang === 'fr'
-    ? (reason === 'scan' ? 'Vos 2 scans gratuits sont utilisés' : "L'audit est une fonctionnalité Premium")
-    : (reason === 'scan' ? 'Your 2 free scans are used up' : 'Audit is a Premium feature');
-
-  const desc = lang === 'fr'
-    ? (reason === 'scan'
-      ? 'Passez à Premium pour scanner sans limite, jusqu\'à 50km à la ronde.'
-      : "Débloquez l'audit de présence numérique et l'envoi WhatsApp prêt à l'emploi avec Premium.")
-    : (reason === 'scan'
-      ? 'Upgrade to Premium for unlimited scanning, up to 50km around you.'
-      : 'Unlock the digital presence audit and one-click WhatsApp outreach with Premium.');
-
-  const perks = lang === 'fr'
-    ? ['Scans illimités', 'Audit entreprise + envoi WhatsApp', 'Suggestions intelligentes', 'Collaboration en équipe']
-    : ['Unlimited scans', 'Business audit + WhatsApp outreach', 'Smart suggestions', 'Team collaboration'];
+  const [title, desc] = COPY[reason][lang];
+  const perks = PERKS[lang];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

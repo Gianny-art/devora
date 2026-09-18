@@ -6,6 +6,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { getTopCategories } from '@/lib/interest';
 import { getBusinessVisual } from '@/lib/business-visuals';
+import { isPremium as checkIsPremium } from '@/lib/admin';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Lock, Zap, Radar } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -33,7 +34,7 @@ export default function SuggestionsPage() {
     }).catch(() => setUserPlan('free'));
   }, [user]);
 
-  const isPremium = userPlan === 'premium' || userPlan === 'premium_plus';
+  const isPremium = checkIsPremium(userPlan || 'free', user?.email);
   const topCategories = getTopCategories(6);
 
   if (!user) {

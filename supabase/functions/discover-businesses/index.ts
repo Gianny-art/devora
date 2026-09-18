@@ -5,25 +5,22 @@ const corsHeaders = {
 
 const GEOAPIFY_BASE = 'https://api.geoapify.com/v2/places';
 
-// Broad top-level Geoapify categories covering the same ground as the previous OSM tag list
-// (shops, restaurants/cafes/bars, healthcare, offices, hotels, education, services).
-const CATEGORIES = [
-  'commercial',
-  'catering',
-  'healthcare',
-  'accommodation.hotel',
-  'accommodation.hostel',
-  'accommodation.guest_house',
-  'accommodation.motel',
-  'education',
-  'office',
-  'service',
-  'leisure',
-  'sport',
-].join(',');
+// Split by sector and queried separately (each with its own result budget) so a
+// data-dense sector (e.g. hotels in a given neighborhood) can't crowd out
+// restaurants, gyms, schools, shops, etc. from the combined result set.
+const CATEGORY_GROUPS: { key: string; categories: string }[] = [
+  { key: 'catering', categories: 'catering' }, // restaurants, cafes, bars, bakeries
+  { key: 'commercial', categories: 'commercial' }, // shops, supermarkets, retail, electronics
+  { key: 'healthcare', categories: 'healthcare' }, // pharmacy, clinic, hospital, dentist
+  { key: 'accommodation', categories: 'accommodation.hotel,accommodation.hostel,accommodation.guest_house,accommodation.motel' },
+  { key: 'education', categories: 'education' }, // schools, colleges
+  { key: 'office_service', categories: 'office,service' },
+  { key: 'leisure_sport', categories: 'leisure,sport' }, // gyms, fitness, sports centres
+];
 
-const RESULTS_PER_QUERY = 500;
-const CONCURRENCY = 4;
+const RESULTS_PER_GROUP = 80; // per sector, per spatial chunk
+const RESULTS_PER_QUERY_LARGE = 300; // combined-category fallback for mega-scans
+const CONCURRENCY = 6;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -48,21 +45,26 @@ Deno.serve(async (req) => {
     console.log(`Scan at ${lat},${lng} radius ${radius}km`);
 
     const cappedRadius = Math.min(radius, 500);
-    const chunks = cappedRadius > 100
+    const isMegaScan = cappedRadius > 100;
+    const chunks = isMegaScan
       ? generateGridChunks(lat, lng, cappedRadius)
       : [{ lat, lng, radius: cappedRadius }];
 
-    console.log(`Querying Geoapify across ${chunks.length} chunk(s)`);
+    // Per-sector fan-out for normal scans (accurate category diversity); a single
+    // combined-category query per chunk for mega-scans (bounds total request count).
+    const tasks: { lat: number; lng: number; radius: number; categories: string; limit: number }[] = isMegaScan
+      ? chunks.map(c => ({ lat: c.lat, lng: c.lng, radius: c.radius, categories: CATEGORY_GROUPS.map(g => g.categories).join(','), limit: RESULTS_PER_QUERY_LARGE }))
+      : chunks.flatMap(c => CATEGORY_GROUPS.map(g => ({ lat: c.lat, lng: c.lng, radius: c.radius, categories: g.categories, limit: RESULTS_PER_GROUP })));
+
+    console.log(`Querying Geoapify across ${tasks.length} task(s) (${chunks.length} chunk(s), mega=${isMegaScan})`);
 
     const allFeatures: any[] = [];
     const errors: string[] = [];
 
-    // Run chunk requests with limited concurrency to stay within Geoapify's rate limits
-    // while still being much faster than the old sequential Overpass loop.
-    for (let i = 0; i < chunks.length; i += CONCURRENCY) {
-      const batch = chunks.slice(i, i + CONCURRENCY);
+    for (let i = 0; i < tasks.length; i += CONCURRENCY) {
+      const batch = tasks.slice(i, i + CONCURRENCY);
       const results = await Promise.allSettled(
-        batch.map(c => queryGeoapify(c.lat, c.lng, c.radius, apiKey))
+        batch.map(t => queryGeoapify(t.lat, t.lng, t.radius, t.categories, t.limit, apiKey))
       );
       for (const r of results) {
         if (r.status === 'fulfilled') {
@@ -73,8 +75,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (allFeatures.length === 0 && errors.length > 0 && errors.length === chunks.length) {
-      // Every single chunk failed outright — this is a real error, not "no businesses nearby".
+    if (allFeatures.length === 0 && errors.length > 0 && errors.length === tasks.length) {
+      // Every single request failed outright — this is a real error, not "no businesses nearby".
       console.error('All Geoapify queries failed:', errors);
       return new Response(JSON.stringify({
         success: false,
@@ -93,7 +95,7 @@ Deno.serve(async (req) => {
         return true;
       });
 
-    console.log(`Found ${businesses.length} businesses (${errors.length} chunk failures)`);
+    console.log(`Found ${businesses.length} businesses (${errors.length} task failures)`);
 
     return new Response(JSON.stringify({ success: true, businesses }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -127,9 +129,9 @@ function generateGridChunks(lat: number, lng: number, radiusKm: number): { lat: 
   return chunks.slice(0, 25);
 }
 
-async function queryGeoapify(lat: number, lng: number, radiusKm: number, apiKey: string): Promise<any[]> {
+async function queryGeoapify(lat: number, lng: number, radiusKm: number, categories: string, limit: number, apiKey: string): Promise<any[]> {
   const radiusMeters = Math.round(radiusKm * 1000);
-  const url = `${GEOAPIFY_BASE}?categories=${CATEGORIES}&filter=circle:${lng},${lat},${radiusMeters}&bias=proximity:${lng},${lat}&limit=${RESULTS_PER_QUERY}&details=contact_extended,contact&apiKey=${apiKey}`;
+  const url = `${GEOAPIFY_BASE}?categories=${categories}&filter=circle:${lng},${lat},${radiusMeters}&bias=proximity:${lng},${lat}&limit=${limit}&details=contact_extended,contact&apiKey=${apiKey}`;
 
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -139,7 +141,7 @@ async function queryGeoapify(lat: number, lng: number, radiusKm: number, apiKey:
         return data.features || [];
       }
       const body = await response.text();
-      console.error(`Geoapify returned ${response.status} for ${lat},${lng}: ${body.slice(0, 200)}`);
+      console.error(`Geoapify returned ${response.status} for ${lat},${lng} [${categories}]: ${body.slice(0, 200)}`);
       if (response.status === 429) {
         await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
         continue;
@@ -179,6 +181,8 @@ function mapFeatureToBusiness(feature: any) {
     id: `geoapify-${p.place_id || `${lat}-${lng}-${p.name}`}`,
     name: p.name as string,
     address: formatAddress(p),
+    city: p.city || p.county || null,
+    district: p.suburb || p.district || null,
     phone, email, website,
     facebook, instagram, whatsapp,
     openingHours,
