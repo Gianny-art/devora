@@ -15,7 +15,7 @@ import { useUsageLimits } from '@/hooks/useUsageLimits';
 import { Business } from '@/types';
 import {
   Users, Search, Trash2, ExternalLink, Globe, Phone, MapPin,
-  Navigation, Star, X, ArrowRight, ChevronLeft,
+  Navigation, Star, X, ArrowRight, ChevronLeft, Share2, Check,
 } from 'lucide-react';
 
 import { useToast } from '@/hooks/use-toast';
@@ -87,6 +87,10 @@ export default function LeadsPage() {
   const [userPlan, setUserPlan] = useState('free');
   const [nag, setNag] = useState(false);
   const { canAudit, incrementAudit } = useUsageLimits(userPlan);
+  const [userProjects, setUserProjects] = useState<{ id: string; name: string }[]>([]);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [sharedProjectIds, setSharedProjectIds] = useState<string[]>([]);
+  const [sharing, setSharing] = useState(false);
 
   const fetchLeads = async () => {
     if (!user) return;
@@ -96,13 +100,39 @@ export default function LeadsPage() {
     setLoading(false);
   };
 
+  const fetchProjects = async () => {
+    if (!user) return;
+    const { data: memberRows } = await supabase.from('project_members').select('project_id').eq('user_id', user.id);
+    if (!memberRows || memberRows.length === 0) return;
+    const { data } = await supabase.from('projects').select('id, name').in('id', memberRows.map(r => r.project_id));
+    if (data) setUserProjects(data);
+  };
+
   useEffect(() => {
     fetchLeads();
+    fetchProjects();
     if (!user) return;
     supabase.functions.invoke('check-subscription').then(({ data }) => {
       if (data?.plan) setUserPlan(data.plan);
     }).catch(() => {});
   }, [user]);
+
+  const shareToProject = async (projectId: string) => {
+    if (!selectedLead || !user) return;
+    setSharing(true);
+    try {
+      const { error } = await supabase.from('project_businesses').insert({
+        project_id: projectId, lead_id: selectedLead.id, added_by: user.id,
+      });
+      if (error) throw error;
+      setSharedProjectIds(prev => [...prev, projectId]);
+      toast({ title: t('common.success'), description: lang === 'fr' ? 'Partagé dans le projet.' : 'Shared to project.' });
+    } catch (err: any) {
+      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+    } finally {
+      setSharing(false);
+    }
+  };
 
   const updateStatus = async (id: string, status: string) => {
     const { error } = await supabase.from('leads').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
@@ -125,6 +155,8 @@ export default function LeadsPage() {
 
   const selectLead = (lead: Lead) => {
     setSelectedLead(lead);
+    setShowShareMenu(false);
+    setSharedProjectIds([]);
     setTimeout(() => smoothScrollTo('lead-detail'), 120);
   };
 
@@ -388,6 +420,41 @@ export default function LeadsPage() {
                     onAuditGenerated={incrementAudit}
                     onUpgradeClick={() => setNag(true)}
                   />
+
+                  {userProjects.length === 0 ? (
+                    <div className="glass rounded-lg p-3 text-center">
+                      <p className="text-[11px] text-muted-foreground mb-2">
+                        {lang === 'fr' ? "Créez un projet pour partager ce lead avec votre équipe." : 'Create a project to share this lead with your team.'}
+                      </p>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px]" asChild>
+                        <a href="/collaboration">{lang === 'fr' ? 'Aller à Collaboration' : 'Go to Collaboration'}</a>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="glass rounded-lg p-3 space-y-1.5">
+                      <Button size="sm" variant="outline" className="w-full h-8 text-xs gap-1.5" onClick={() => setShowShareMenu(v => !v)}>
+                        <Share2 className="w-3.5 h-3.5" /> {lang === 'fr' ? 'Partager vers un projet' : 'Share to a project'}
+                      </Button>
+                      {showShareMenu && (
+                        <div className="space-y-1 pt-1">
+                          {userProjects.map(p => {
+                            const done = sharedProjectIds.includes(p.id);
+                            return (
+                              <button
+                                key={p.id}
+                                disabled={done || sharing}
+                                onClick={() => shareToProject(p.id)}
+                                className="w-full flex items-center justify-between text-left text-xs px-2.5 py-2 rounded-md border border-border/50 hover:bg-secondary/50 transition-colors disabled:opacity-60"
+                              >
+                                <span className="truncate">{p.name}</span>
+                                {done && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2">
                     <select value={selectedLead.status} onChange={e => updateStatus(selectedLead.id, e.target.value)}

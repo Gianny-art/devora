@@ -1,0 +1,542 @@
+<title>Cahier Devora</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --ink:#17140f;
+    --ink-soft:#4a463f;
+    --paper:#ffffff;
+    --paper-warm:#faf8f4;
+    --rule:#dedad0;
+    --brand-deep:#0f3d2c;
+    --brand:#1f7a58;
+    --brand-bright:#2da97c;
+    --gold:#a9863f;
+    --serif:'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --sans:'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+    --mono:'IBM Plex Mono', 'Courier New', monospace;
+    --page-w: 210mm;
+    --page-h: 297mm;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{background:#e9e6de; margin:0; padding:0;}
+  body{
+    font-family:var(--sans);
+    color:var(--ink);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:36px 16px 80px;
+  }
+
+  .toolbar{
+    width:100%;
+    max-width:var(--page-w);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:16px;
+    margin-bottom:18px;
+    font-family:var(--mono);
+    font-size:11px;
+    line-height:1.6;
+    color:var(--ink-soft);
+    letter-spacing:.04em;
+  }
+  .toolbar button{
+    font-family:var(--sans);
+    font-size:12px;
+    font-weight:600;
+    background:var(--brand-deep);
+    color:#fff;
+    border:none;
+    border-radius:3px;
+    padding:9px 16px;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .toolbar button:hover{background:var(--brand);}
+  .toolbar button:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+
+  .page{
+    position:relative;
+    width:var(--page-w);
+    min-height:var(--page-h);
+    background:var(--paper);
+    box-shadow:0 1px 2px rgba(23,20,15,.08), 0 18px 40px -18px rgba(23,20,15,.28);
+    margin-bottom:28px;
+    padding:24mm 20mm 20mm;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .page.cover, .page.backcover{
+    background:linear-gradient(165deg, var(--brand-deep) 0%, #0a2c20 78%, #082219 100%);
+    color:#f4f2ea;
+    padding:0;
+    justify-content:center;
+    align-items:center;
+    box-shadow:0 1px 2px rgba(23,20,15,.08), 0 24px 50px -18px rgba(8,15,12,.5);
+  }
+
+  .kicker{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--brand);
+  }
+  .page.cover .kicker, .page.backcover .kicker{ color:#bfe8d6; }
+
+  h1.page-title{
+    font-family:var(--serif);
+    font-weight:700;
+    font-size:26px;
+    line-height:1.15;
+    margin:6px 0 0;
+    text-wrap:balance;
+    color:var(--ink);
+  }
+  .rule{
+    width:38px;
+    height:3px;
+    background:var(--brand);
+    margin:14px 0 20px;
+  }
+  .body-copy{ font-size:12.6px; line-height:1.72; color:var(--ink-soft); max-width:62ch; }
+  .body-copy p{ margin:0 0 13px; }
+  .body-copy strong{ color:var(--ink); font-weight:600; }
+  .lede{ font-family:var(--serif); font-style:italic; font-size:15.5px; color:var(--ink); line-height:1.55; margin:0 0 18px; max-width:56ch; }
+
+  .footer-row{
+    margin-top:auto;
+    padding-top:16px;
+    border-top:1px solid var(--rule);
+    display:flex;
+    justify-content:space-between;
+    font-family:var(--mono);
+    font-size:9.5px;
+    color:#948f83;
+    letter-spacing:.03em;
+  }
+
+  /* ---------- Cover ---------- */
+  .cover-inner{ display:flex; flex-direction:column; align-items:center; text-align:center; padding:26mm 20mm; }
+  .emblem{
+    width:118px; height:118px; border-radius:16px; background:#fff;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 14px 30px -10px rgba(0,0,0,.45);
+    margin-bottom:26px;
+  }
+  .emblem img{ width:86px; height:86px; object-fit:contain; }
+  .cover-word{ font-family:var(--serif); font-weight:700; font-size:52px; letter-spacing:.01em; margin:0; }
+  .cover-tag{ font-family:var(--sans); font-size:14px; color:#d7ead9; max-width:34ch; margin:16px 0 0; line-height:1.5; }
+  .cover-doc-label{ font-family:var(--mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--brand-bright); margin-top:46px; }
+  .cover-line{ width:56px; height:1px; background:rgba(244,242,234,.35); margin:14px 0; }
+  .cover-foot{ font-family:var(--sans); font-size:11.5px; color:#cfe6d8; }
+  .cover-foot b{ color:#fff; font-weight:600; }
+
+  /* ---------- Sommaire ---------- */
+  .toc-list{ list-style:none; margin:0; padding:0; }
+  .toc-list li{
+    display:flex; align-items:baseline; gap:10px;
+    padding:10px 0; border-bottom:1px solid var(--rule);
+    font-size:13px;
+  }
+  .toc-list .num{ font-family:var(--mono); color:var(--brand); font-size:11px; width:20px; }
+  .toc-list .t{ font-weight:600; color:var(--ink); flex-shrink:0; }
+  .toc-list .d{ flex:1; border-bottom:1px dotted #c9c4b7; height:1px; margin:0 8px 4px; }
+  .toc-list .p{ font-family:var(--mono); color:var(--ink-soft); font-size:11.5px; }
+
+  /* ---------- Pillars / grid ---------- */
+  .pillars{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:8px; }
+  .pillar{ border:1px solid var(--rule); border-radius:4px; padding:16px 16px 14px; }
+  .pillar .pn{ font-family:var(--mono); font-size:10px; color:var(--brand); letter-spacing:.1em; }
+  .pillar h3{ font-family:var(--serif); font-size:15px; margin:6px 0 8px; color:var(--ink); }
+  .pillar p{ font-size:11.5px; line-height:1.6; color:var(--ink-soft); margin:0; }
+
+  .stat-row{ display:flex; gap:18px; margin:18px 0 6px; }
+  .stat{ flex:1; border-left:2px solid var(--brand); padding-left:10px; }
+  .stat .v{ font-family:var(--serif); font-weight:700; font-size:20px; color:var(--ink); display:block; }
+  .stat .l{ font-size:10.5px; color:var(--ink-soft); }
+
+  .quote-block{
+    border-left:2px solid var(--gold);
+    padding:2px 0 2px 18px;
+    margin:18px 0;
+    font-family:var(--serif); font-style:italic; font-size:14px; color:var(--ink);
+    line-height:1.6;
+  }
+
+  .not-list{ list-style:none; margin:6px 0 0; padding:0; }
+  .not-list li{
+    display:flex; gap:12px; padding:13px 0; border-bottom:1px solid var(--rule);
+    font-size:12.4px; line-height:1.55; color:var(--ink-soft);
+  }
+  .not-list li:first-child{ padding-top:0; }
+  .not-list .x{ font-family:var(--serif); font-weight:700; color:#a6382e; font-size:15px; flex-shrink:0; }
+  .not-list strong{ color:var(--ink); }
+
+  .check-list{ list-style:none; margin:10px 0 0; padding:0; }
+  .check-list li{ display:flex; gap:10px; padding:8px 0; font-size:12px; color:var(--ink-soft); line-height:1.5; }
+  .check-list .c{ color:var(--brand); font-weight:700; flex-shrink:0; }
+
+  table.plan-table{ width:100%; border-collapse:collapse; margin-top:10px; font-size:11.5px; }
+  table.plan-table th{ text-align:left; font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--brand); padding:8px 10px; border-bottom:2px solid var(--ink); }
+  table.plan-table td{ padding:9px 10px; border-bottom:1px solid var(--rule); color:var(--ink-soft); vertical-align:top; }
+  table.plan-table td.h{ color:var(--ink); font-weight:600; }
+  table.plan-table tr:last-child td{ border-bottom:none; }
+
+  .use-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px; }
+  .use-card{ background:var(--paper-warm); border-radius:4px; padding:14px 16px; }
+  .use-card h4{ font-family:var(--serif); font-size:13.5px; margin:0 0 6px; }
+  .use-card p{ font-size:11px; color:var(--ink-soft); line-height:1.55; margin:0; }
+
+  .founder-wrap{ display:flex; gap:24px; align-items:flex-start; margin-top:4px; }
+  .founder-photo{
+    width:96px; height:96px; border-radius:50%; flex-shrink:0;
+    background:var(--brand-deep); color:#fff; display:flex; align-items:center; justify-content:center;
+    font-family:var(--serif); font-weight:700; font-size:28px;
+  }
+  .badge-row{ display:flex; gap:8px; margin:10px 0 14px; flex-wrap:wrap; }
+  .badge{ font-family:var(--mono); font-size:9.5px; border:1px solid var(--rule); border-radius:20px; padding:4px 10px; color:var(--ink-soft); }
+
+  .contact-grid{ display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:30px; color:#e9f2ec; }
+  .contact-grid .lbl{ font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--brand-bright); margin-bottom:6px; }
+  .contact-grid .val{ font-size:13px; }
+
+  @media print{
+    html,body{ background:#fff; padding:0; }
+    .toolbar{ display:none; }
+    .page{ box-shadow:none; margin:0; page-break-after:always; }
+    .page:last-child{ page-break-after:auto; }
+  }
+
+  @page{ size:A4; margin:0; }
+</style>
+
+<div class="toolbar">
+  <span>DEVORA — CAHIER DE PRÉSENTATION · 20 PAGES · A4<br><span style="opacity:.75">Si le bouton ne réagit pas : touche <b>Ctrl+P</b> (Windows) ou <b>Cmd+P</b> (Mac), puis « Enregistrer en PDF ».</span></span>
+  <button id="printBtn">Imprimer / Exporter en PDF</button>
+</div>
+<script>
+  document.getElementById('printBtn').addEventListener('click', function(){
+    try { window.print(); } catch (e) { alert('Utilisez Ctrl+P (ou Cmd+P sur Mac) pour imprimer cette page.'); }
+  });
+</script>
+
+<!-- PAGE 1 — COUVERTURE -->
+<section class="page cover">
+  <div class="cover-inner">
+    <div class="emblem"><img src="devora-logo.png" alt="Devora"></div>
+    <p class="cover-word">DEVORA</p>
+    <p class="cover-tag">Présence numérique, gestion informatique et accompagnement digital pour les entreprises locales.</p>
+    <p class="cover-doc-label">Cahier de présentation</p>
+    <div class="cover-line"></div>
+    <p class="cover-foot"><b>Foapa Gianny Robert</b> — Fondateur<br>Yaoundé, Cameroun</p>
+  </div>
+</section>
+
+<!-- PAGE 2 — SOMMAIRE -->
+<section class="page">
+  <p class="kicker">Sommaire</p>
+  <h1 class="page-title">Ce que contient ce cahier</h1>
+  <div class="rule"></div>
+  <ul class="toc-list">
+    <li><span class="num">01</span><span class="t">Mot du fondateur</span><span class="d"></span><span class="p">03</span></li>
+    <li><span class="num">02</span><span class="t">Le constat</span><span class="d"></span><span class="p">04</span></li>
+    <li><span class="num">03</span><span class="t">Notre mission</span><span class="d"></span><span class="p">05</span></li>
+    <li><span class="num">04</span><span class="t">Ce que Devora n'est pas</span><span class="d"></span><span class="p">06</span></li>
+    <li><span class="num">05</span><span class="t">Notre approche en quatre piliers</span><span class="d"></span><span class="p">07</span></li>
+    <li><span class="num">06</span><span class="t">Le scan intelligent</span><span class="d"></span><span class="p">08</span></li>
+    <li><span class="num">07</span><span class="t">Tableau de bord &amp; historique</span><span class="d"></span><span class="p">09</span></li>
+    <li><span class="num">08</span><span class="t">Le CRM de suivi</span><span class="d"></span><span class="p">10</span></li>
+    <li><span class="num">09</span><span class="t">L'audit de présence numérique</span><span class="d"></span><span class="p">11</span></li>
+    <li><span class="num">10</span><span class="t">La prise de contact</span><span class="d"></span><span class="p">12</span></li>
+    <li><span class="num">11</span><span class="t">La collaboration en équipe</span><span class="d"></span><span class="p">13</span></li>
+    <li><span class="num">12</span><span class="t">Suggestions &amp; notifications</span><span class="d"></span><span class="p">14</span></li>
+    <li><span class="num">13</span><span class="t">Export &amp; comptes rendus</span><span class="d"></span><span class="p">15</span></li>
+    <li><span class="num">14</span><span class="t">Nos formules</span><span class="d"></span><span class="p">16</span></li>
+    <li><span class="num">15</span><span class="t">À qui s'adresse Devora</span><span class="d"></span><span class="p">17</span></li>
+    <li><span class="num">16</span><span class="t">Sécurité &amp; données</span><span class="d"></span><span class="p">18</span></li>
+    <li><span class="num">17</span><span class="t">Le fondateur</span><span class="d"></span><span class="p">19</span></li>
+    <li><span class="num">18</span><span class="t">Nous contacter</span><span class="d"></span><span class="p">20</span></li>
+  </ul>
+  <div class="footer-row"><span>DEVORA</span><span>02</span></div>
+</section>
+
+<!-- PAGE 3 — EDITO -->
+<section class="page">
+  <p class="kicker">Édito</p>
+  <h1 class="page-title">Mot du fondateur</h1>
+  <div class="rule"></div>
+  <p class="lede">« Devora est né d'un constat simple : la majorité des commerces et prestataires que je croise chaque jour n'existent pas numériquement — et personne ne les aide vraiment à changer cela. »</p>
+  <div class="body-copy">
+    <p>J'ai fondé Devora à Yaoundé après avoir accompagné, en tant que développeur, plusieurs petites structures qui peinaient à être trouvées, contactées ou simplement identifiées en ligne. Le problème n'était pas seulement l'absence de site web : c'était une absence plus large de présence, d'organisation numérique et d'accompagnement adapté.</p>
+    <p>Ce cahier présente notre démarche telle qu'elle est aujourd'hui : un outil de repérage, de diagnostic et de suivi, pensé pour les professionnels et les structures qui accompagnent les entreprises locales dans leur transition numérique — pas pour vendre des sites internet.</p>
+    <p>Je vous remercie de prendre le temps de le lire.</p>
+  </div>
+  <div class="footer-row"><span>MOT DU FONDATEUR</span><span>03</span></div>
+</section>
+
+<!-- PAGE 4 — LE CONSTAT -->
+<section class="page">
+  <p class="kicker">Contexte</p>
+  <h1 class="page-title">Le constat</h1>
+  <div class="rule"></div>
+  <div class="body-copy">
+    <p>Dans la plupart des villes, des milliers de commerces, d'artisans et de professionnels indépendants fonctionnent au quotidien sans aucune existence numérique organisée : pas de fiche en ligne fiable, pas d'adresse email professionnelle, pas de présence sur les réseaux, parfois même pas de numéro de contact facilement trouvable.</p>
+    <p>Cette absence n'est pas seulement une question de site web. C'est une question de <strong>visibilité</strong>, d'<strong>organisation informatique de base</strong> et d'<strong>accès à l'accompagnement</strong> nécessaire pour amorcer une transition numérique — un accompagnement souvent hors de portée, mal ciblé, ou simplement inconnu de ces entreprises.</p>
+    <p>À l'inverse, les professionnels du numérique — agences, indépendants, structures d'accompagnement — manquent d'un outil simple pour identifier objectivement <em>qui</em>, dans une zone donnée, a réellement besoin de cet accompagnement, et sur quels points précis.</p>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><span class="v">Repérage</span><span class="l">manuel, long, peu fiable aujourd'hui</span></div>
+    <div class="stat"><span class="v">Besoins</span><span class="l">rarement qualifiés avant le premier contact</span></div>
+    <div class="stat"><span class="v">Suivi</span><span class="l">dispersé entre notes, tableurs, mémoire</span></div>
+  </div>
+  <div class="footer-row"><span>LE CONSTAT</span><span>04</span></div>
+</section>
+
+<!-- PAGE 5 — NOTRE MISSION -->
+<section class="page">
+  <p class="kicker">Mission</p>
+  <h1 class="page-title">Notre mission</h1>
+  <div class="rule"></div>
+  <div class="body-copy">
+    <p>Devora existe pour aider à <strong>repérer, qualifier et suivre</strong> les entreprises locales qui ont besoin d'un accompagnement numérique — qu'il s'agisse de présence en ligne, de gestion informatique de base, d'organisation de leurs outils de contact, ou simplement d'orientation vers les bonnes ressources.</p>
+    <p>Notre rôle n'est pas de fournir cet accompagnement nous-mêmes de façon automatisée, mais de donner aux professionnels et structures qui le font — agences, indépendants, associations, institutions — les moyens d'identifier rapidement où agir en priorité, et de suivre cette action dans la durée.</p>
+    <p>Concrètement, cela veut dire : localiser les entreprises concernées, comprendre objectivement leur situation numérique, organiser le suivi de la relation, et faciliter la prise de contact — du premier repérage jusqu'à l'accompagnement effectif.</p>
+  </div>
+  <div class="quote-block">Aider à trouver les bonnes entreprises à accompagner — pas à leur vendre un produit standardisé.</div>
+  <div class="footer-row"><span>NOTRE MISSION</span><span>05</span></div>
+</section>
+
+<!-- PAGE 6 — CE QUE DEVORA N'EST PAS -->
+<section class="page">
+  <p class="kicker">Cadrage</p>
+  <h1 class="page-title">Ce que Devora n'est pas</h1>
+  <div class="rule"></div>
+  <div class="body-copy" style="max-width:none;">
+    <p>Ce point mérite d'être posé clairement, car c'est une confusion fréquente : Devora n'est <strong>pas</strong> un générateur ou un créateur de sites internet.</p>
+  </div>
+  <ul class="not-list">
+    <li><span class="x">✕</span><span><strong>Ce n'est pas un constructeur de sites web.</strong> Devora ne crée, n'héberge et ne conçoit aucun site pour les entreprises repérées.</span></li>
+    <li><span class="x">✕</span><span><strong>Ce n'est pas une agence web déguisée.</strong> L'outil ne vend aucune prestation de développement ; il sert à orienter vers un accompagnement, quel qu'en soit le prestataire.</span></li>
+    <li><span class="x">✕</span><span><strong>Ce n'est pas un outil d'intelligence artificielle générative.</strong> Les diagnostics produits sont déterministes, fondés sur des données vérifiables — pas sur du contenu généré automatiquement.</span></li>
+    <li><span class="x">✕</span><span><strong>Ce n'est pas réservé aux développeurs.</strong> Toute personne ou structure accompagnant des entreprises dans leur transition numérique peut l'utiliser.</span></li>
+  </ul>
+  <div class="body-copy" style="margin-top:6px;">
+    <p>Devora se positionne en amont : c'est un outil de <strong>repérage, de diagnostic et de gestion de la relation</strong> — la présence numérique, la gestion informatique et l'aide digitale qui en découlent restent l'affaire des professionnels que Devora aide à orienter.</p>
+  </div>
+  <div class="footer-row"><span>CADRAGE</span><span>06</span></div>
+</section>
+
+<!-- PAGE 7 — QUATRE PILIERS -->
+<section class="page">
+  <p class="kicker">Approche</p>
+  <h1 class="page-title">Quatre piliers</h1>
+  <div class="rule"></div>
+  <div class="body-copy"><p>L'ensemble de l'outil s'organise autour de quatre étapes simples, du repérage jusqu'au suivi de la relation.</p></div>
+  <div class="pillars">
+    <div class="pillar"><span class="pn">01 — REPÉRER</span><h3>Scanner une zone</h3><p>Identifier, à partir d'une position et d'un rayon donnés, les entreprises locales ayant un besoin visible d'accompagnement numérique.</p></div>
+    <div class="pillar"><span class="pn">02 — COMPRENDRE</span><h3>Diagnostiquer</h3><p>Évaluer objectivement la présence numérique de chaque entreprise : contact, site, réseaux, visibilité disponible.</p></div>
+    <div class="pillar"><span class="pn">03 — ORGANISER</span><h3>Suivre</h3><p>Centraliser les entreprises retenues dans un CRM simple, avec statut, notes et historique de la relation.</p></div>
+    <div class="pillar"><span class="pn">04 — AGIR</span><h3>Contacter &amp; orienter</h3><p>Faciliter la première prise de contact et le partage du diagnostic avec l'entreprise concernée.</p></div>
+  </div>
+  <div class="footer-row"><span>QUATRE PILIERS</span><span>07</span></div>
+</section>
+
+<!-- PAGE 8 — LE SCAN -->
+<section class="page">
+  <p class="kicker">Pilier 01</p>
+  <h1 class="page-title">Le scan intelligent</h1>
+  <div class="rule"></div>
+  <div class="body-copy">
+    <p>Le scan est le point de départ : à partir d'une position géographique et d'un rayon choisi, Devora interroge des bases de données ouvertes pour recenser les commerces, artisans, professionnels de santé, établissements scolaires, restaurants et autres structures présents dans la zone.</p>
+    <p>Chaque entreprise repérée est ensuite filtrée selon des critères objectifs — présence ou non d'un site, d'un contact, d'une adresse claire — afin de ne mettre en avant, par défaut, que celles présentant un réel besoin d'accompagnement.</p>
+    <p>Le résultat est volontairement <strong>divers</strong> : hôtels, restaurants, écoles, commerces, professionnels de santé ou de la beauté, salles de sport — aucun secteur n'est privilégié au détriment des autres. Un système de filtres par catégorie permet ensuite d'affiner la lecture des résultats.</p>
+  </div>
+  <div class="footer-row"><span>LE SCAN INTELLIGENT</span><span>08</span></div>
+</section>
+
+<!-- PAGE 9 — TABLEAU DE BORD -->
+<section class="page">
+  <p class="kicker">Suivi</p>
+  <h1 class="page-title">Tableau de bord &amp; historique</h1>
+  <div class="rule"></div>
+  <div class="body-copy">
+    <p>Chaque scan réalisé est conservé dans un historique consultable à tout moment : position, rayon, date et liste complète des entreprises repérées. Rien n'est perdu d'une session à l'autre.</p>
+    <p>Le tableau de bord donne une vue d'ensemble de l'activité : nombre total de scans réalisés, d'entreprises identifiées, de dossiers à forte opportunité d'accompagnement, et de contacts déjà suivis dans le CRM.</p>
+    <p>Cette vue permet de mesurer, sur la durée, l'étendue du travail de repérage déjà accompli sur un territoire donné — et d'identifier les zones encore peu explorées.</p>
+  </div>
+  <div class="footer-row"><span>TABLEAU DE BORD</span><span>09</span></div>
+</section>
+
+<!-- PAGE 10 — CRM -->
+<section class="page">
+  <p class="kicker">Pilier 03</p>
+  <h1 class="page-title">Le CRM de suivi</h1>
+  <div class="rule"></div>
+  <div class="body-copy">
+    <p>Une entreprise repérée peut être sauvegardée comme <strong>lead</strong> : elle rejoint alors une liste de suivi organisée en statuts — nouveau, contacté, intéressé, proposition, conclu, perdu — reflétant l'avancement réel de la relation.</p>
+    <p>Chaque fiche conserve les coordonnées disponibles (nom, adresse, ville, quartier, téléphone, email, site le cas échéant) ainsi que le score d'opportunité calculé lors du scan, pour prioriser naturellement les relances.</p>
+    <p>Ce CRM reste volontairement simple : il ne remplace pas un outil de gestion commerciale complet, il centralise ce qui est nécessaire pour ne perdre le fil d'aucune entreprise identifiée comme prioritaire.</p>
+  </div>
+  <div class="footer-row"><span>CRM DE SUIVI</span><span>10</span></div>
+</section>
+
+<!-- PAGE 11 — AUDIT -->
+<section class="page">
+  <p class="kicker">Pilier 02</p>
+  <h1 class="page-title">L'audit de présence numérique</h1>
+  <div class="rule"></div>
+  <div class="body-copy">
+    <p>Pour chaque entreprise, Devora peut générer un diagnostic de présence numérique : un état des lieux fondé exclusivement sur des données observables — existence d'un site, d'une adresse email, d'un numéro de contact, d'une présence sur les réseaux sociaux.</p>
+    <p>Ce diagnostic liste les points manquants et des recommandations directement associées — par exemple, l'absence de site entraîne une recommandation de présence en ligne de base ; l'absence d'email professionnel, une recommandation d'en créer une.</p>
+    <p>Il ne s'agit à aucun moment d'un contenu généré automatiquement de façon créative : chaque ligne du diagnostic découle directement d'une donnée vérifiable sur l'entreprise concernée.</p>
+  </div>
+  <div class="footer-row"><span>AUDIT DE PRÉSENCE NUMÉRIQUE</span><span>11</span></div>
+</section>
+
+<!-- PAGE 12 — CONTACT -->
+<section class="page">
+  <p class="kicker">Pilier 04</p>
+  <h1 class="page-title">La prise de contact</h1>
+  <div class="rule"></div>
+  <div class="body-copy">
+    <p>Une fois le diagnostic établi, Devora prépare un message d'approche professionnel, personnalisé avec le nom et les constats propres à l'entreprise concernée, prêt à être envoyé directement sur WhatsApp au contact identifié.</p>
+    <p>L'objectif est de réduire au minimum le temps entre le repérage d'une opportunité et le premier échange réel avec l'entreprise — sans jamais se substituer à la relation humaine qui doit suivre.</p>
+  </div>
+  <div class="quote-block">Du repérage au premier message, en quelques clics — la conversation reste toujours entre les mains de l'utilisateur.</div>
+  <div class="footer-row"><span>PRISE DE CONTACT</span><span>12</span></div>
+</section>
+
+<!-- PAGE 13 — COLLABORATION -->
+<section class="page">
+  <p class="kicker">Équipe</p>
+  <h1 class="page-title">La collaboration en équipe</h1>
+  <div class="rule"></div>
+  <div class="body-copy">
+    <p>De nombreuses structures d'accompagnement numérique travaillent à plusieurs. Devora permet de créer des projets partagés, d'y inviter des collaborateurs, et d'échanger directement autour des entreprises identifiées au sein d'une messagerie dédiée au projet.</p>
+    <p>Chaque membre peut ajouter des entreprises suivies au projet commun, consulter les échanges et rester informé de l'avancement, sans dépendre d'outils externes pour coordonner le travail de repérage et de suivi.</p>
+  </div>
+  <div class="footer-row"><span>COLLABORATION EN ÉQUIPE</span><span>13</span></div>
+</section>
+
+<!-- PAGE 14 — SUGGESTIONS -->
+<section class="page">
+  <p class="kicker">Intelligence d'usage</p>
+  <h1 class="page-title">Suggestions &amp; notifications</h1>
+  <div class="rule"></div>
+  <div class="body-copy">
+    <p>Devora observe, de façon strictement locale à chaque utilisateur, les secteurs d'activité les plus souvent consultés ou sauvegardés, afin de proposer des suggestions de zones ou de secteurs à explorer en priorité lors des prochains scans.</p>
+    <p>Des notifications régulières rappellent également de reprendre le repérage sur un territoire, ou signalent que de nouvelles opportunités sont probablement apparues depuis le dernier passage — sans jamais solliciter l'utilisateur de façon excessive.</p>
+  </div>
+  <div class="footer-row"><span>SUGGESTIONS &amp; NOTIFICATIONS</span><span>14</span></div>
+</section>
+
+<!-- PAGE 15 — EXPORT -->
+<section class="page">
+  <p class="kicker">Restitution</p>
+  <h1 class="page-title">Export &amp; comptes rendus</h1>
+  <div class="rule"></div>
+  <div class="body-copy">
+    <p>Chaque scan peut être exporté sous forme de document PDF ou de fichier tableur (CSV, compatible Excel), reprenant la date, la position et le rayon du scan, ainsi que la liste complète des entreprises repérées avec leurs coordonnées disponibles et leur diagnostic sommaire.</p>
+    <p>Ce format de restitution permet de partager facilement le travail de repérage avec un client, un partenaire ou une équipe — sous une forme professionnelle, signée et datée, sans dépendre de l'application elle-même.</p>
+  </div>
+  <div class="footer-row"><span>EXPORT &amp; COMPTES RENDUS</span><span>15</span></div>
+</section>
+
+<!-- PAGE 16 — FORMULES -->
+<section class="page">
+  <p class="kicker">Modèle</p>
+  <h1 class="page-title">Nos formules</h1>
+  <div class="rule"></div>
+  <table class="plan-table">
+    <thead><tr><th>Formule</th><th>Portée</th><th>Inclus</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="h">Free</td>
+        <td>0 – 10 km</td>
+        <td>2 scans à vie, coordonnées des entreprises, vue carte &amp; liste, CRM de leads.</td>
+      </tr>
+      <tr>
+        <td class="h">Premium</td>
+        <td>Monde entier</td>
+        <td>Scans illimités, audit de présence numérique, prise de contact WhatsApp, suggestions intelligentes, export PDF / Excel, collaboration en équipe, support prioritaire.</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="body-copy" style="margin-top:22px;">
+    <p>Le passage à la formule Premium se règle par mobile money (CamPay, Maviance), sans engagement de durée.</p>
+  </div>
+  <div class="footer-row"><span>NOS FORMULES</span><span>16</span></div>
+</section>
+
+<!-- PAGE 17 — A QUI S'ADRESSE -->
+<section class="page">
+  <p class="kicker">Public</p>
+  <h1 class="page-title">À qui s'adresse Devora</h1>
+  <div class="rule"></div>
+  <div class="use-grid">
+    <div class="use-card"><h4>Agences &amp; indépendants du numérique</h4><p>Repérer des prospects qualifiés sans démarchage à l'aveugle, avant toute proposition d'accompagnement.</p></div>
+    <div class="use-card"><h4>Structures d'accompagnement</h4><p>Cartographier les besoins d'un territoire pour cibler les actions de sensibilisation et de formation.</p></div>
+    <div class="use-card"><h4>Formateurs en numérique</h4><p>Identifier les entreprises susceptibles de bénéficier d'un accompagnement à la gestion informatique de base.</p></div>
+    <div class="use-card"><h4>Institutions locales</h4><p>Objectiver l'état de la présence numérique des commerces d'un quartier ou d'une commune.</p></div>
+  </div>
+  <div class="footer-row"><span>À QUI S'ADRESSE DEVORA</span><span>17</span></div>
+</section>
+
+<!-- PAGE 18 — SECURITE -->
+<section class="page">
+  <p class="kicker">Confiance</p>
+  <h1 class="page-title">Sécurité &amp; données</h1>
+  <div class="rule"></div>
+  <div class="body-copy"><p>Les données traitées par Devora restent limitées à ce qui est nécessaire à son fonctionnement.</p></div>
+  <ul class="check-list">
+    <li><span class="c">—</span><span>La position géographique n'est utilisée que le temps du scan ; elle n'est jamais conservée.</span></li>
+    <li><span class="c">—</span><span>Les informations sur les entreprises repérées proviennent de bases de données ouvertes (OpenStreetMap / Geoapify), pas de sources privées.</span></li>
+    <li><span class="c">—</span><span>Les leads et notes sauvegardés restent strictement privés à l'utilisateur ou au projet partagé concerné.</span></li>
+    <li><span class="c">—</span><span>Les paiements sont traités par les opérateurs mobile money (CamPay, Maviance) ; Devora ne stocke aucune donnée bancaire.</span></li>
+  </ul>
+  <div class="footer-row"><span>SÉCURITÉ &amp; DONNÉES</span><span>18</span></div>
+</section>
+
+<!-- PAGE 19 — FONDATEUR -->
+<section class="page">
+  <p class="kicker">Portrait</p>
+  <h1 class="page-title">Le fondateur</h1>
+  <div class="rule"></div>
+  <div class="founder-wrap">
+    <div class="founder-photo">FG</div>
+    <div>
+      <p style="font-family:var(--serif); font-size:17px; font-weight:700; margin:0;">Foapa Gianny Robert</p>
+      <div class="badge-row">
+        <span class="badge">Développeur web</span>
+        <span class="badge">Ingénieur logiciel</span>
+        <span class="badge">Entrepreneur</span>
+      </div>
+      <div class="body-copy" style="max-width:44ch;">
+        <p>Développeur web et ingénieur logiciel basé à Yaoundé, Foapa Gianny Robert fonde Devora après plusieurs missions d'accompagnement auprès de petites structures locales, constatant l'écart persistant entre les besoins d'accompagnement numérique de ces entreprises et les outils disponibles pour les identifier.</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer-row"><span>LE FONDATEUR</span><span>19</span></div>
+</section>
+
+<!-- PAGE 20 — CONTACT / DOS -->
+<section class="page backcover">
+  <div class="cover-inner" style="padding:26mm 22mm;">
+    <p class="cover-doc-label" style="margin-top:0;">Nous contacter</p>
+    <p class="cover-word" style="font-size:30px; margin-top:16px;">Parlons de votre territoire</p>
+    <div class="contact-grid">
+      <div><p class="lbl">Fondateur</p><p class="val">Foapa Gianny Robert</p></div>
+      <div><p class="lbl">Localisation</p><p class="val">Yaoundé, Cameroun</p></div>
+      <div><p class="lbl">Email</p><p class="val">giannyfoapa@gmail.com</p></div>
+      <div><p class="lbl">Téléphone</p><p class="val">+237 6 57 95 61 54</p></div>
+    </div>
+    <div class="cover-line" style="margin-top:34px;"></div>
+    <p class="cover-foot">DEVORA — Cahier de présentation</p>
+  </div>
+</section>
