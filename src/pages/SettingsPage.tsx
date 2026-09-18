@@ -10,9 +10,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
+import { isAdmin } from '@/lib/admin';
 import {
   Settings, Sun, Moon, Globe, User, Shield, FileText, ExternalLink,
-  Radar, Info, Download, Bell, BellOff, UserCircle, Handshake, Check,
+  Radar, Info, Download, Bell, BellOff, UserCircle, Handshake, Check, ShieldCheck,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -87,6 +88,13 @@ export default function SettingsPage() {
                     <Handshake className="w-3 h-3" /> {t('collab.title')}
                   </Button>
                 </Link>
+                {isAdmin(user.email) && (
+                  <Link to="/admin">
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <ShieldCheck className="w-3 h-3" /> Administration
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
           ) : (

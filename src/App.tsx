@@ -21,6 +21,7 @@ import ProjectPage from "./pages/ProjectPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ScanDetailPage from "./pages/ScanDetailPage";
 import SuggestionsPage from "./pages/SuggestionsPage";
+import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/project/:id" element={<ProjectPage />} />
               <Route path="/scan-history/:id" element={<ScanDetailPage />} />
               <Route path="/suggestions" element={<SuggestionsPage />} />
+              <Route path="/admin" element={<AdminPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

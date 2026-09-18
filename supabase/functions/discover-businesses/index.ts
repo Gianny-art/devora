@@ -168,9 +168,10 @@ function mapFeatureToBusiness(feature: any) {
   // (requested via `details=contact_extended,contact`) is absent.
   const raw = p.datasource?.raw || {};
   const contact = p.contact || {};
-  const website = p.website || contact.website || raw.website || raw['contact:website'] || null;
-  const phone = p.phone || contact.phone || raw.phone || raw['contact:phone'] || raw['contact:mobile'] || null;
-  const email = contact.email || raw.email || raw['contact:email'] || null;
+  const website = p.website || contact.website || raw.website || raw['contact:website'] || raw.url || raw.website2 || null;
+  const phone = p.phone || contact.phone || raw.phone || raw['contact:phone'] || raw['contact:mobile']
+    || raw.mobile || raw.telephone || raw['phone_1'] || raw['contact:phone_1'] || null;
+  const email = contact.email || raw.email || raw['contact:email'] || raw['email_1'] || raw['contact:email_1'] || null;
   const facebook = contact.facebook || raw['contact:facebook'] || raw.facebook || null;
   const instagram = contact.instagram || raw['contact:instagram'] || raw.instagram || null;
   const whatsapp = contact.whatsapp || raw['contact:whatsapp'] || raw.whatsapp || null;

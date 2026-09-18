@@ -1,4 +1,5 @@
 import { Business } from '@/types';
+import { getNeedSummary } from '@/lib/business-visuals';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -55,13 +56,14 @@ export function exportScanToPdf(businesses: Business[], meta: ScanExportMeta, la
   }
 
   const head = lang === 'fr'
-    ? [['#', 'Nom', 'Catégorie', 'Lieu', 'Téléphone', 'Email', 'Site web']]
-    : [['#', 'Name', 'Category', 'Location', 'Phone', 'Email', 'Website']];
+    ? [['#', 'Nom', 'Catégorie', 'Description', 'Lieu', 'Téléphone', 'Email', 'Site web']]
+    : [['#', 'Name', 'Category', 'Description', 'Location', 'Phone', 'Email', 'Website']];
 
   const body = businesses.map((b, i) => [
     String(i + 1),
     b.name,
     b.category || '—',
+    getNeedSummary({ name: b.name, category: b.category, hasWebsite: b.hasWebsite, opportunityScore: b.opportunityScore, rating: b.rating }, lang),
     [b.district, b.city].filter(Boolean).join(', ') || '—',
     b.phone || '—',
     b.email || '—',
@@ -72,9 +74,10 @@ export function exportScanToPdf(businesses: Business[], meta: ScanExportMeta, la
     startY: y + 10,
     head,
     body,
-    styles: { fontSize: 8, cellPadding: 4 },
+    styles: { fontSize: 7.5, cellPadding: 4 },
     headStyles: { fillColor: [45, 169, 124], textColor: 255 },
     alternateRowStyles: { fillColor: [245, 247, 246] },
+    columnStyles: { 3: { cellWidth: 130 } },
     margin: { left: margin, right: margin },
     didDrawPage: () => {
       const pageCount = doc.getNumberOfPages();
@@ -111,8 +114,8 @@ export function exportScanToPdf(businesses: Business[], meta: ScanExportMeta, la
 
 export function exportScanToCsv(businesses: Business[], meta: ScanExportMeta, lang: 'fr' | 'en' = 'fr') {
   const headers = lang === 'fr'
-    ? ['Nom', 'Catégorie', 'Ville', 'Quartier', 'Téléphone', 'Email', 'Site web', 'A un site', "Score d'opportunité"]
-    : ['Name', 'Category', 'City', 'District', 'Phone', 'Email', 'Website', 'Has website', 'Opportunity score'];
+    ? ['Nom', 'Catégorie', 'Description', 'Ville', 'Quartier', 'Téléphone', 'Email', 'Site web', 'A un site', "Score d'opportunité"]
+    : ['Name', 'Category', 'Description', 'City', 'District', 'Phone', 'Email', 'Website', 'Has website', 'Opportunity score'];
 
   const escape = (v: unknown) => {
     const s = v === null || v === undefined ? '' : String(v);
@@ -120,7 +123,9 @@ export function exportScanToCsv(businesses: Business[], meta: ScanExportMeta, la
   };
 
   const rows = businesses.map(b => [
-    b.name, b.category || '', b.city || '', b.district || '',
+    b.name, b.category || '',
+    getNeedSummary({ name: b.name, category: b.category, hasWebsite: b.hasWebsite, opportunityScore: b.opportunityScore, rating: b.rating }, lang),
+    b.city || '', b.district || '',
     b.phone || '', b.email || '', b.website || '',
     b.hasWebsite ? (lang === 'fr' ? 'Oui' : 'Yes') : (lang === 'fr' ? 'Non' : 'No'),
     b.opportunityScore ?? '',
