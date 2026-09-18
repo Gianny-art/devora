@@ -51,8 +51,8 @@ export default function ScanPage() {
   }, [user]);
 
   const userIsAdmin = isAdmin(user?.email);
-  const isPremiumUser = checkIsPremium(userPlan, user?.email);
-  const availableRadii = getAvailableRadii(userPlan, user?.email);
+  const isPremiumUser = checkIsPremium(userPlan);
+  const availableRadii = getAvailableRadii(userPlan);
   const {
     scanCount, limits,
     canScan, canAudit,

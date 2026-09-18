@@ -5,8 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Keep in sync with src/lib/admin.ts ADMIN_EMAILS
-const ADMIN_EMAILS = ['giannyfoapa@gmail.com', 'forlannoums@gmail.com'];
+// The one account that can never be demoted — keep in sync with src/lib/admin.ts
+const OWNER_EMAIL = 'giannyfoapa@gmail.com';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -23,7 +23,14 @@ Deno.serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user?.email) throw new Error('Authentication required');
-    if (!ADMIN_EMAILS.includes(userData.user.email.toLowerCase())) {
+
+    const callerEmail = userData.user.email.toLowerCase();
+    const isOwner = callerEmail === OWNER_EMAIL;
+
+    const { data: callerProfile } = await supabase.from('profiles').select('role').eq('id', userData.user.id).single();
+    const isAdminCaller = isOwner || callerProfile?.role === 'admin';
+
+    if (!isAdminCaller) {
       return new Response(JSON.stringify({ success: false, error: 'Forbidden' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -33,6 +40,7 @@ Deno.serve(async (req) => {
     const action = body.action || 'list';
 
     if (action === 'update') {
+      // Plan changes: any admin may perform these.
       const { userId, plan, plan_expires_at } = body;
       if (!userId || !plan) throw new Error('userId and plan required');
       const { error } = await supabase.from('profiles').update({
@@ -43,10 +51,26 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    if (action === 'update-role') {
+      // Role changes: owner only.
+      if (!isOwner) {
+        return new Response(JSON.stringify({ success: false, error: 'Seul le propriétaire du compte peut modifier les rôles.' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { userId, role, targetEmail } = body;
+      if (!userId || !role) throw new Error('userId and role required');
+      if ((targetEmail || '').toLowerCase() === OWNER_EMAIL) throw new Error('Le rôle du propriétaire ne peut pas être modifié.');
+      if (role !== 'user' && role !== 'admin') throw new Error('Invalid role');
+      const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Default: list all users with usage stats
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, email, full_name, company, plan, plan_expires_at, created_at')
+      .select('id, email, full_name, company, plan, plan_expires_at, role, created_at')
       .order('created_at', { ascending: false });
     if (profilesError) throw profilesError;
 
@@ -73,6 +97,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       users,
+      isOwner,
       totals: {
         userCount: users.length,
         premiumCount: users.filter(u => u.plan === 'premium').length,
@@ -87,4 +112,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-

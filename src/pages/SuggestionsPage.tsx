@@ -34,7 +34,7 @@ export default function SuggestionsPage() {
     }).catch(() => setUserPlan('free'));
   }, [user]);
 
-  const isPremium = checkIsPremium(userPlan || 'free', user?.email);
+  const isPremium = checkIsPremium(userPlan || 'free');
   const topCategories = getTopCategories(6);
 
   if (!user) {

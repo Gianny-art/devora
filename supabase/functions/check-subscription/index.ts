@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('plan, plan_expires_at')
+      .select('plan, plan_expires_at, role')
       .eq('id', userData.user.id)
       .single();
 
@@ -49,6 +49,7 @@ Deno.serve(async (req) => {
       subscribed: plan !== 'free',
       plan,
       plan_expires_at: plan !== 'free' ? profile?.plan_expires_at ?? null : null,
+      role: profile?.role || 'user',
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

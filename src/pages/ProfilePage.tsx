@@ -119,7 +119,7 @@ export default function ProfilePage() {
     );
   }
 
-  const isPremiumUser = checkIsPremium(profile.plan, user.email);
+  const isPremiumUser = checkIsPremium(profile.plan);
   const initials = (profile.company || profile.full_name)
     ? (profile.company || profile.full_name).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : user.email?.slice(0, 2).toUpperCase() || 'U';

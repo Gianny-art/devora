@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { isAdmin, getPlanLimits } from '@/lib/admin';
+import { getPlanLimits } from '@/lib/admin';
 
 export function useUsageLimits(userPlan: string) {
   const { user } = useAuth();
@@ -9,7 +9,6 @@ export function useUsageLimits(userPlan: string) {
   const [auditCount, setAuditCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const userIsAdmin = isAdmin(user?.email);
   const limits = getPlanLimits(userPlan);
 
   useEffect(() => {
@@ -35,8 +34,8 @@ export function useUsageLimits(userPlan: string) {
     }
   };
 
-  const canScan = userIsAdmin || scanCount < limits.maxScansTotal;
-  const canAudit = userIsAdmin || auditCount < limits.maxAudits;
+  const canScan = scanCount < limits.maxScansTotal;
+  const canAudit = auditCount < limits.maxAudits;
 
   const incrementScan = () => setScanCount(c => c + 1);
   const incrementAudit = () => setAuditCount(c => c + 1);

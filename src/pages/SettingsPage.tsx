@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const { canInstall, installed, promptInstall } = usePwaInstall();
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent);
 
   useEffect(() => {
@@ -31,6 +32,13 @@ export default function SettingsPage() {
       setPushEnabled(Notification.permission === 'granted');
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.functions.invoke('check-subscription').then(({ data }) => {
+      setUserRole(data?.role || 'user');
+    }).catch(() => {});
+  }, [user]);
 
   const togglePush = async () => {
     if (!('Notification' in window)) return;
@@ -88,7 +96,7 @@ export default function SettingsPage() {
                     <Handshake className="w-3 h-3" /> {t('collab.title')}
                   </Button>
                 </Link>
-                {isAdmin(user.email) && (
+                {isAdmin(user.email, userRole) && (
                   <Link to="/admin">
                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
                       <ShieldCheck className="w-3 h-3" /> Administration

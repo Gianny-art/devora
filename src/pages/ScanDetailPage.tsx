@@ -41,7 +41,7 @@ export default function ScanDetailPage() {
   const [userPlan, setUserPlan] = useState('free');
   const [nag, setNag] = useState<'audit' | 'export' | null>(null);
   const { canAudit, incrementAudit } = useUsageLimits(userPlan);
-  const isPremiumUser = checkIsPremium(userPlan, user?.email);
+  const isPremiumUser = checkIsPremium(userPlan);
 
   useEffect(() => {
     if (!user || !id) return;
