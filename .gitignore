@@ -43,3 +43,6 @@ android/app/release/
 *.sw?
 .vercel
 .env*
+
+# Scratch/temp working files (not part of the app)
+scratch/
