@@ -105,9 +105,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             if (isScan) {
               return (
                 <Link key={to} to={to} className="relative flex flex-col items-center justify-center min-w-0 flex-1">
-                  <div
-                    className={`absolute -top-6 w-14 h-14 rounded-full flex items-center justify-center shadow-[0_4px_20px_hsl(var(--primary)/0.45)] border-4 border-background transition-transform active:scale-95 ${isActive ? 'bg-primary' : 'bg-primary'}`}
-                  >
+                  <div className="absolute -top-6 w-14 h-14 rounded-full flex items-center justify-center bg-primary shadow-[0_4px_20px_hsl(var(--primary)/0.45)] border-4 border-background transition-transform active:scale-95">
                     <Icon className="w-6 h-6 text-primary-foreground" />
                   </div>
                   <span className={`text-[9px] font-semibold leading-none mt-7 ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>{label}</span>
