@@ -23,7 +23,7 @@ create table public.scan_shares (
   scan_id uuid not null references public.scans(id) on delete cascade,
   owner_id uuid not null references auth.users(id) on delete cascade,
   access text not null default 'view' check (access in ('view', 'full')),
-  token text not null unique default encode(gen_random_bytes(16), 'hex'),
+  token text not null unique default replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', ''),
   created_at timestamptz not null default now()
 );
 alter table public.scan_shares enable row level security;
