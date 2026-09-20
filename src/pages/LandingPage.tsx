@@ -1,12 +1,16 @@
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Radar, ArrowRight, Zap, Globe, BarChart3, Users, Handshake, History } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAuth } from '@/contexts/AuthContext';
 import devoraLogo from '@/assets/devora-logo.png';
 
 export default function LandingPage() {
   const { t } = useTranslation();
+  const { user, loading } = useAuth();
+
+  if (!loading && user) return <Navigate to="/dashboard" replace />;
 
   const features = [
     { icon: Radar, title: t('landing.feature.scanning'), desc: t('landing.feature.scanning.desc') },
