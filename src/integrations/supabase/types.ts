@@ -660,6 +660,41 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_shares: {
+        Row: {
+          access: string
+          created_at: string
+          id: string
+          owner_id: string
+          scan_id: string
+          token: string
+        }
+        Insert: {
+          access?: string
+          created_at?: string
+          id?: string
+          owner_id: string
+          scan_id: string
+          token?: string
+        }
+        Update: {
+          access?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          scan_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_shares_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

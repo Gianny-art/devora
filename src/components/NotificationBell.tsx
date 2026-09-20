@@ -81,12 +81,12 @@ export function NotificationBell() {
       <AnimatePresence>
         {open && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <div className="fixed inset-0 z-40 bg-black/20 sm:bg-transparent" onClick={() => setOpen(false)} />
             <motion.div
-              initial={{ opacity: 0, y: -5, scale: 0.95 }}
+              initial={{ opacity: 0, y: -5, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -5, scale: 0.95 }}
-              className="absolute right-0 top-10 w-72 sm:w-80 max-h-80 glass rounded-lg border border-border shadow-xl z-50 overflow-hidden"
+              exit={{ opacity: 0, y: -5, scale: 0.97 }}
+              className="fixed left-1/2 top-16 -translate-x-1/2 w-[92vw] max-w-sm sm:absolute sm:left-auto sm:right-0 sm:top-10 sm:translate-x-0 sm:w-80 max-h-[70vh] sm:max-h-80 glass rounded-xl border border-border shadow-xl z-50 overflow-hidden"
             >
               <div className="flex items-center justify-between p-3 border-b border-border/50">
                 <span className="text-sm font-semibold">{t('notif.title')}</span>
@@ -96,7 +96,7 @@ export function NotificationBell() {
                   </button>
                 )}
               </div>
-              <div className="overflow-y-auto max-h-60">
+              <div className="overflow-y-auto max-h-[55vh] sm:max-h-60">
                 {notifications.length === 0 ? (
                   <div className="p-6 text-center text-xs text-muted-foreground">
                     {t('notif.empty')}
@@ -105,7 +105,7 @@ export function NotificationBell() {
                   notifications.map(n => (
                     <div
                       key={n.id}
-                      className={`p-3 border-b border-border/30 text-xs ${!n.read ? 'bg-primary/5' : ''}`}
+                      className={`p-3 border-b border-border/30 text-xs text-left ${!n.read ? 'bg-primary/5' : ''}`}
                     >
                       <div className="font-semibold">{n.title}</div>
                       <div className="text-muted-foreground mt-0.5">{n.message}</div>

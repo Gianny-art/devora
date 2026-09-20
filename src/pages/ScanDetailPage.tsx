@@ -6,6 +6,7 @@ import { BusinessHeroCard } from '@/components/BusinessHeroCard';
 import { BusinessAuditPanel } from '@/components/BusinessAuditPanel';
 import { UpgradeNagDialog } from '@/components/UpgradeNagDialog';
 import { ExportScanButton } from '@/components/ExportScanButton';
+import { ShareScanDialog } from '@/components/ShareScanDialog';
 import { BusinessMap } from '@/components/BusinessMap';
 import { getBusinessVisual, getBusinessStory } from '@/lib/business-visuals';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,7 +20,7 @@ import { useUsageLimits } from '@/hooks/useUsageLimits';
 import { isPremium as checkIsPremium } from '@/lib/admin';
 import {
   Map as MapIcon, List, X, ExternalLink, Phone, Globe, Star, Loader2,
-  ChevronLeft, ChevronRight, ArrowLeft, Navigation, Mail, MapPin,
+  ChevronLeft, ChevronRight, ArrowLeft, Navigation, Mail, MapPin, Share2,
 } from 'lucide-react';
 
 const PAGE_SIZE = 5;
@@ -40,6 +41,7 @@ export default function ScanDetailPage() {
   const [page, setPage] = useState(0);
   const [userPlan, setUserPlan] = useState('free');
   const [nag, setNag] = useState<'audit' | 'export' | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const { canAudit, incrementAudit } = useUsageLimits(userPlan);
   const isPremiumUser = checkIsPremium(userPlan);
 
@@ -149,6 +151,11 @@ export default function ScanDetailPage() {
               lang={lang as 'fr' | 'en'}
               onUpgradeClick={() => setNag('export')}
             />
+          )}
+          {id && (
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => setShareOpen(true)}>
+              <Share2 className="w-3.5 h-3.5" /> {lang === 'fr' ? 'Partager' : 'Share'}
+            </Button>
           )}
         </div>
 
@@ -326,6 +333,7 @@ export default function ScanDetailPage() {
         </div>
       </div>
       <UpgradeNagDialog open={!!nag} onOpenChange={(open) => !open && setNag(null)} reason={nag || 'audit'} lang={lang as 'fr' | 'en'} />
+      {id && <ShareScanDialog open={shareOpen} onOpenChange={setShareOpen} scanId={id} lang={lang as 'fr' | 'en'} />}
     </AppLayout>
   );
 }

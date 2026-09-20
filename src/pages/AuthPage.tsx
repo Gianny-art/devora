@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,12 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
   const { toast } = useToast();
   const { t, lang } = useTranslation();
 
-  if (!authLoading && user) return <Navigate to="/dashboard" replace />;
+  if (!authLoading && user) return <Navigate to={redirectTo} replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,8 +52,9 @@ export default function AuthPage() {
     }
 
     setLoading(true);
-    const fn = mode === 'signin' ? signIn : signUp;
-    const { error } = await fn(email, password);
+    const { error } = mode === 'signin'
+      ? await signIn(email, password)
+      : await signUp(email, password, redirectTo);
     setLoading(false);
     if (error) {
       toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
@@ -59,7 +62,7 @@ export default function AuthPage() {
       if (mode === 'signup') {
         toast({ title: t('auth.checkEmail'), description: t('auth.confirmationSent') });
       } else {
-        navigate('/dashboard');
+        navigate(redirectTo);
       }
     }
   };

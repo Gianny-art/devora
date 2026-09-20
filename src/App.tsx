@@ -20,9 +20,11 @@ import CollaborationPage from "./pages/CollaborationPage";
 import ProjectPage from "./pages/ProjectPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ScanDetailPage from "./pages/ScanDetailPage";
+import SharedScanPage from "./pages/SharedScanPage";
 import SuggestionsPage from "./pages/SuggestionsPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
+import { CookieConsent } from "@/components/CookieConsent";
 
 const queryClient = new QueryClient();
 
@@ -50,12 +52,14 @@ const App = () => (
               <Route path="/collaboration" element={<CollaborationPage />} />
               <Route path="/project/:id" element={<ProjectPage />} />
               <Route path="/scan-history/:id" element={<ScanDetailPage />} />
+              <Route path="/shared/:token" element={<SharedScanPage />} />
               <Route path="/suggestions" element={<SuggestionsPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          <CookieConsent />
         </TooltipProvider>
       </ThemeProvider>
     </AuthProvider>
