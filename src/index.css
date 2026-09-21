@@ -147,6 +147,10 @@
     @apply border-border;
   }
 
+  html, body {
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: var(--font-display);

@@ -125,38 +125,45 @@ export default function ScanDetailPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        <div className="flex items-center gap-3 mb-4">
-          <Button size="sm" variant="ghost" onClick={() => navigate('/dashboard')} className="h-8 px-2">
-            <ArrowLeft className="w-4 h-4 mr-1" /> {t('common.back')}
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-xl font-bold">{businesses.length} {t('scan.businesses')}</h1>
-            {scanInfo && (
-              <p className="text-xs text-muted-foreground">
-                {scanInfo.radius} km · {new Date(scanInfo.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
-            )}
-          </div>
-          <Badge variant="outline" className="text-[10px] border-score-none/40 text-score-none">{noWebsite} {t('scan.noSite')}</Badge>
-          <Badge variant="outline" className="text-[10px] border-score-good/40 text-score-good">{withWebsite} {t('scan.withSite')}</Badge>
-          <div className="flex items-center gap-1">
-            <Button size="sm" variant={view === 'list' ? 'secondary' : 'ghost'} onClick={() => setView('list')} className="h-7 w-7 p-0"><List className="w-3.5 h-3.5" /></Button>
-            <Button size="sm" variant={view === 'map' ? 'secondary' : 'ghost'} onClick={() => setView('map')} className="h-7 w-7 p-0"><MapIcon className="w-3.5 h-3.5" /></Button>
-          </div>
-          {scanInfo && (
-            <ExportScanButton
-              businesses={sorted}
-              meta={{ date: new Date(scanInfo.created_at), lat: scanInfo.lat, lng: scanInfo.lng, radiusKm: scanInfo.radius }}
-              canExport={isPremiumUser}
-              lang={lang as 'fr' | 'en'}
-              onUpgradeClick={() => setNag('export')}
-            />
-          )}
-          {id && (
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => setShareOpen(true)}>
-              <Share2 className="w-3.5 h-3.5" /> {lang === 'fr' ? 'Partager' : 'Share'}
+        <div className="mb-4 space-y-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button size="sm" variant="ghost" onClick={() => navigate('/dashboard')} className="h-8 px-2 shrink-0">
+              <ArrowLeft className="w-4 h-4 sm:mr-1" /> <span className="hidden sm:inline">{t('common.back')}</span>
             </Button>
-          )}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base sm:text-xl font-bold truncate">{businesses.length} {t('scan.businesses')}</h1>
+              {scanInfo && (
+                <p className="text-[11px] sm:text-xs text-muted-foreground">
+                  {scanInfo.radius} km · {new Date(scanInfo.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button size="sm" variant={view === 'list' ? 'secondary' : 'ghost'} onClick={() => setView('list')} className="h-7 w-7 p-0"><List className="w-3.5 h-3.5" /></Button>
+              <Button size="sm" variant={view === 'map' ? 'secondary' : 'ghost'} onClick={() => setView('map')} className="h-7 w-7 p-0"><MapIcon className="w-3.5 h-3.5" /></Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="outline" className="text-[10px] border-score-none/40 text-score-none">{noWebsite} {t('scan.noSite')}</Badge>
+            <Badge variant="outline" className="text-[10px] border-score-good/40 text-score-good">{withWebsite} {t('scan.withSite')}</Badge>
+            <div className="flex items-center gap-1.5 ml-auto">
+              {scanInfo && (
+                <ExportScanButton
+                  businesses={sorted}
+                  meta={{ date: new Date(scanInfo.created_at), lat: scanInfo.lat, lng: scanInfo.lng, radiusKm: scanInfo.radius }}
+                  canExport={isPremiumUser}
+                  lang={lang as 'fr' | 'en'}
+                  onUpgradeClick={() => setNag('export')}
+                />
+              )}
+              {id && (
+                <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => setShareOpen(true)}>
+                  <Share2 className="w-3.5 h-3.5" /> {lang === 'fr' ? 'Partager' : 'Share'}
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
         {categories.length > 1 && (
