@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.2';
+import jwt from 'npm:jsonwebtoken@9.0.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,6 +26,22 @@ Deno.serve(async (req) => {
     const reference: string | undefined = payload.external_reference || payload.reference;
     const status: string | undefined = payload.status;
     if (!reference) throw new Error('Missing external_reference');
+
+    // CamPay signs every callback as a JWT in `signature`, using the
+    // merchant's Webhook Key (found in the CamPay dashboard). When configured,
+    // reject anything that isn't validly signed — otherwise anyone could POST
+    // a fake "SUCCESSFUL" callback and grant themselves Premium for free.
+    const webhookKey = Deno.env.get('CAMPAY_WEBHOOK_KEY');
+    if (webhookKey) {
+      if (!payload.signature) {
+        return new Response(JSON.stringify({ error: 'Missing signature' }), { status: 401, headers: corsHeaders });
+      }
+      try {
+        jwt.verify(payload.signature, webhookKey, { algorithms: ['HS256'] });
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401, headers: corsHeaders });
+      }
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

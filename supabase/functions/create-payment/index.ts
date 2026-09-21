@@ -52,6 +52,9 @@ Deno.serve(async (req) => {
         await supabaseClient.from('payments').update({ status: 'failed' }).eq('external_reference', externalReference);
         throw new Error(result.error);
       }
+      if (result.reference) {
+        await supabaseClient.from('payments').update({ provider_reference: result.reference }).eq('external_reference', externalReference);
+      }
     } else {
       const result = await initiateMaviance(amount, phone, externalReference);
       if (!result.ok) {
@@ -71,7 +74,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function initiateCamPay(amount: number, phone: string, reference: string): Promise<{ ok: true } | { ok: false; error: string }> {
+async function initiateCamPay(amount: number, phone: string, reference: string): Promise<{ ok: true; reference?: string } | { ok: false; error: string }> {
   const baseUrl = Deno.env.get('CAMPAY_BASE_URL') || 'https://demo.campay.net';
   const username = Deno.env.get('CAMPAY_USERNAME');
   const password = Deno.env.get('CAMPAY_PASSWORD');
@@ -103,7 +106,8 @@ async function initiateCamPay(amount: number, phone: string, reference: string):
       const body = await collectRes.text();
       return { ok: false, error: `CamPay collect failed (HTTP ${collectRes.status}): ${body.slice(0, 200)}` };
     }
-    return { ok: true };
+    const collectBody = await collectRes.json().catch(() => ({}));
+    return { ok: true, reference: collectBody?.reference };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'CamPay request failed' };
   }

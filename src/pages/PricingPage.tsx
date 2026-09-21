@@ -78,13 +78,16 @@ export default function PricingPage() {
       const reference: string = data.reference;
       const startedAt = Date.now();
       pollRef.current = setInterval(async () => {
-        const { data: payment } = await supabase.from('payments').select('status').eq('external_reference', reference).single();
-        if (payment?.status === 'success') {
+        // Ask the server for the latest status — it will actively check with
+        // CamPay itself if the webhook hasn't updated it yet, so this stays
+        // accurate even if the merchant's webhook isn't configured.
+        const { data: check } = await supabase.functions.invoke('check-payment-status', { body: { reference } });
+        if (check?.status === 'success') {
           if (pollRef.current) clearInterval(pollRef.current);
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
           setPaymentState('success');
           checkSubscription();
-        } else if (payment?.status === 'failed') {
+        } else if (check?.status === 'failed') {
           if (pollRef.current) clearInterval(pollRef.current);
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
           setPaymentState('failed');

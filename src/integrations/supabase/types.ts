@@ -323,6 +323,7 @@ export type Database = {
           id: string
           phone: string | null
           provider: string
+          provider_reference: string | null
           status: string
           tier: string
           user_id: string
@@ -335,6 +336,7 @@ export type Database = {
           id?: string
           phone?: string | null
           provider: string
+          provider_reference?: string | null
           status?: string
           tier: string
           user_id: string
@@ -347,6 +349,7 @@ export type Database = {
           id?: string
           phone?: string | null
           provider?: string
+          provider_reference?: string | null
           status?: string
           tier?: string
           user_id?: string
