@@ -72,7 +72,16 @@ export default function PricingPage() {
       const { data, error } = await supabase.functions.invoke('create-payment', {
         body: { tier: activeTier, provider, phone: phone.trim() },
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        // supabase-js only gives a generic "non-2xx status code" message by
+        // default — the real reason is in the response body it attaches.
+        let message = error.message;
+        try {
+          const body = await (error as any).context?.json();
+          if (body?.error) message = body.error;
+        } catch {}
+        throw new Error(message);
+      }
       if (!data?.success) throw new Error(data?.error || (lang === 'fr' ? 'Échec du paiement' : 'Payment failed'));
 
       const reference: string = data.reference;

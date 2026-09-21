@@ -10,6 +10,16 @@ const TIER_AMOUNTS: Record<string, number> = {
   premium: 5000,
 };
 
+// CamPay rejects anything that isn't the full international MSISDN
+// (237XXXXXXXXX) — a bare local number like "655260684" fails with
+// "Invalid phone number" (ER101). Normalize whatever format the user typed.
+function normalizeCameroonPhone(input: string): string | null {
+  const digits = input.replace(/[^\d]/g, '').replace(/^00/, '');
+  if (/^237\d{9}$/.test(digits)) return digits;
+  if (/^\d{9}$/.test(digits)) return `237${digits}`;
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -27,10 +37,13 @@ Deno.serve(async (req) => {
     if (userError || !userData.user) throw new Error('Authentication required');
     const user = userData.user;
 
-    const { tier, provider, phone } = await req.json();
+    const { tier, provider, phone: rawPhone } = await req.json();
     if (!TIER_AMOUNTS[tier]) throw new Error('Invalid tier');
     if (provider !== 'campay' && provider !== 'maviance') throw new Error('Invalid provider');
-    if (!phone || typeof phone !== 'string') throw new Error('Phone number required');
+    if (!rawPhone || typeof rawPhone !== 'string') throw new Error('Phone number required');
+
+    const phone = normalizeCameroonPhone(rawPhone);
+    if (!phone) throw new Error('Numéro invalide — utilisez un numéro camerounais (ex: 6XXXXXXXX ou 237 6XXXXXXXX).');
 
     const amount = TIER_AMOUNTS[tier];
     const externalReference = `devora-${crypto.randomUUID()}`;
