@@ -74,12 +74,18 @@ Deno.serve(async (req) => {
   }
 });
 
-async function initiateCamPay(amount: number, phone: string, reference: string): Promise<{ ok: true; reference?: string } | { ok: false; error: string }> {
-  const baseUrl = Deno.env.get('CAMPAY_BASE_URL') || 'https://demo.campay.net';
+// CamPay offers a permanent access token (dashboard → Clés d'accès API →
+// "Jeton d'accès permanent") as a simpler alternative to exchanging
+// username/password for a short-lived token on every request. Prefer it
+// when set; otherwise fall back to the username/password flow.
+async function getCamPayToken(baseUrl: string): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
+  const permanentToken = Deno.env.get('CAMPAY_PERMANENT_TOKEN');
+  if (permanentToken) return { ok: true, token: permanentToken };
+
   const username = Deno.env.get('CAMPAY_USERNAME');
   const password = Deno.env.get('CAMPAY_PASSWORD');
   if (!username || !password) {
-    return { ok: false, error: 'CamPay n\'est pas encore configuré (CAMPAY_USERNAME/CAMPAY_PASSWORD manquants).' };
+    return { ok: false, error: 'CamPay n\'est pas encore configuré (CAMPAY_PERMANENT_TOKEN ou CAMPAY_USERNAME/CAMPAY_PASSWORD manquants).' };
   }
 
   try {
@@ -90,7 +96,19 @@ async function initiateCamPay(amount: number, phone: string, reference: string):
     });
     if (!tokenRes.ok) return { ok: false, error: `CamPay auth failed (HTTP ${tokenRes.status})` };
     const { token } = await tokenRes.json();
+    return { ok: true, token };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'CamPay auth request failed' };
+  }
+}
 
+async function initiateCamPay(amount: number, phone: string, reference: string): Promise<{ ok: true; reference?: string } | { ok: false; error: string }> {
+  const baseUrl = Deno.env.get('CAMPAY_BASE_URL') || 'https://demo.campay.net';
+  const tokenResult = await getCamPayToken(baseUrl);
+  if (!tokenResult.ok) return tokenResult;
+  const { token } = tokenResult;
+
+  try {
     const collectRes = await fetch(`${baseUrl}/api/collect/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },

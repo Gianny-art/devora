@@ -69,8 +69,14 @@ Deno.serve(async (req) => {
   }
 });
 
-async function checkCamPayStatus(providerReference: string): Promise<string | null> {
-  const baseUrl = Deno.env.get('CAMPAY_BASE_URL') || 'https://demo.campay.net';
+// CamPay offers a permanent access token (dashboard → Clés d'accès API →
+// "Jeton d'accès permanent") as a simpler alternative to exchanging
+// username/password for a short-lived token on every request. Prefer it
+// when set; otherwise fall back to the username/password flow.
+async function getCamPayToken(baseUrl: string): Promise<string | null> {
+  const permanentToken = Deno.env.get('CAMPAY_PERMANENT_TOKEN');
+  if (permanentToken) return permanentToken;
+
   const username = Deno.env.get('CAMPAY_USERNAME');
   const password = Deno.env.get('CAMPAY_PASSWORD');
   if (!username || !password) return null;
@@ -83,7 +89,18 @@ async function checkCamPayStatus(providerReference: string): Promise<string | nu
     });
     if (!tokenRes.ok) return null;
     const { token } = await tokenRes.json();
+    return token;
+  } catch {
+    return null;
+  }
+}
 
+async function checkCamPayStatus(providerReference: string): Promise<string | null> {
+  const baseUrl = Deno.env.get('CAMPAY_BASE_URL') || 'https://demo.campay.net';
+  const token = await getCamPayToken(baseUrl);
+  if (!token) return null;
+
+  try {
     const statusRes = await fetch(`${baseUrl}/api/transaction/${providerReference}/`, {
       headers: { Authorization: `Token ${token}` },
     });

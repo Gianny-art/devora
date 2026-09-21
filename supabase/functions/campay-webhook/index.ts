@@ -22,7 +22,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    const payload = await req.json();
+    // CamPay's dashboard lets the merchant pick GET or POST for the webhook
+    // call — GET sends the same fields as query params instead of a JSON
+    // body, so read from both and let a JSON body win when present.
+    const url = new URL(req.url);
+    const payload: Record<string, string> = Object.fromEntries(url.searchParams.entries());
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        Object.assign(payload, body);
+      } catch {
+        // No/invalid JSON body — fall back to whatever was in the query string.
+      }
+    }
     const reference: string | undefined = payload.external_reference || payload.reference;
     const status: string | undefined = payload.status;
     if (!reference) throw new Error('Missing external_reference');
