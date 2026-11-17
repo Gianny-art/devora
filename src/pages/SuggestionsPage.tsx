@@ -6,6 +6,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { getTopCategories } from '@/lib/interest';
 import { getBusinessVisual } from '@/lib/business-visuals';
+import { getDomainForCategory } from '@/lib/discovery';
 import { isPremium as checkIsPremium } from '@/lib/admin';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Lock, Zap, Radar } from 'lucide-react';
@@ -35,7 +36,7 @@ export default function SuggestionsPage() {
   }, [user]);
 
   const isPremium = checkIsPremium(userPlan || 'free');
-  const topCategories = getTopCategories(6);
+  const topCategories = getTopCategories(6, user?.id);
 
   if (!user) {
     return (
@@ -77,8 +78,8 @@ export default function SuggestionsPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {lang === 'fr'
-              ? 'Basées sur les secteurs que vous consultez et sauvegardez le plus souvent.'
-              : 'Based on the sectors you consult and save the most.'}
+              ? 'Classement calculé à partir de vos scans, des sites absents et des fiches incomplètes sur cet appareil.'
+              : 'Ranked from your scans, missing websites, and incomplete listings on this device.'}
           </p>
         </div>
 
@@ -109,7 +110,17 @@ export default function SuggestionsPage() {
                     {i === 0 ? (lang === 'fr' ? 'Priorité n°1' : 'Top priority') : `#${i + 1}`}
                   </p>
                   <h3 className="text-lg font-bold">{c.category}</h3>
-                  <Button size="sm" variant="outline" className="mt-2 h-7 text-[11px] bg-background/60 backdrop-blur-md" onClick={() => navigate('/scan')}>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {c.scans > 0
+                      ? (lang === 'fr'
+                        ? `${c.noWebsite} sans site · ${c.incompleteListing} fiches à compléter · ${c.businesses} analysées`
+                        : `${c.noWebsite} without a website · ${c.incompleteListing} incomplete listings · ${c.businesses} scanned`)
+                      : (lang === 'fr' ? 'D’après vos consultations et vos leads enregistrés' : 'Based on your views and saved leads')}
+                  </p>
+                  <Button size="sm" variant="outline" className="mt-2 h-7 text-[11px] bg-background/60 backdrop-blur-md" onClick={() => {
+                    const domain = getDomainForCategory(c.category);
+                    navigate(domain ? `/scan?domain=${encodeURIComponent(domain)}` : '/scan');
+                  }}>
                     {lang === 'fr' ? 'Scanner ce secteur' : 'Scan this sector'}
                   </Button>
                 </div>

@@ -5,6 +5,17 @@ export type AuditResult = {
   problems: string[];
   recommendations: string[];
   pitch: string; // ready-to-send WhatsApp outreach message
+  categoryScores?: { label: string; score: number | null }[];
+  metrics?: { label: string; value: string | null }[];
+  auditedAt?: string;
+  source?: 'listing' | 'pagespeed';
+};
+
+export type PageSpeedReport = {
+  fetchedAt: string;
+  scores: Record<string, number | null>;
+  issues: { category: string; title: string; description: string; score: number | null }[];
+  metrics: { label: string; value: string | null }[];
 };
 
 const hasSocial = (b: Business) => !!(b.facebook || b.instagram || b.whatsapp);
@@ -69,7 +80,44 @@ export function generateAudit(b: Business, lang: 'fr' | 'en' = 'fr'): AuditResul
   }
 
   const pitch = generatePitch(b, problems, lang);
-  return { score, problems, recommendations, pitch };
+  return { score, problems, recommendations, pitch, source: 'listing' };
+}
+
+export function buildPageSpeedAudit(business: Business, report: PageSpeedReport, lang: 'fr' | 'en' = 'fr'): AuditResult {
+  const categories = [
+    { key: 'performance', label: lang === 'fr' ? 'Performance' : 'Performance' },
+    { key: 'accessibility', label: lang === 'fr' ? 'Accessibilité' : 'Accessibility' },
+    { key: 'best-practices', label: lang === 'fr' ? 'Bonnes pratiques' : 'Best practices' },
+    { key: 'seo', label: 'SEO' },
+  ].map(category => ({ label: category.label, score: report.scores[category.key] ?? null }));
+  const scored = categories.flatMap(category => category.score === null ? [] : [category.score]);
+  const score = scored.length ? Math.round((scored.reduce((sum, value) => sum + value, 0) / scored.length) / 10) : 0;
+  const problems = report.issues.map(issue => `${issue.category} · ${issue.title}`);
+  if (problems.length === 0) {
+    problems.push(lang === 'fr'
+      ? 'PageSpeed n’a pas relevé de problème majeur dans les catégories analysées.'
+      : 'PageSpeed did not flag a major issue in the categories tested.');
+  }
+  const recommendations = report.issues
+    .map(issue => issue.description)
+    .filter(Boolean)
+    .slice(0, 5);
+  if (recommendations.length === 0) {
+    recommendations.push(lang === 'fr'
+      ? 'Complétez l’audit par une vérification humaine du contenu, de la marque et du design.'
+      : 'Complete this report with a human review of content, branding, and design.');
+  }
+
+  return {
+    score,
+    problems,
+    recommendations,
+    pitch: generatePitch(business, problems, lang),
+    categoryScores: categories,
+    metrics: report.metrics.map(metric => ({ label: metric.label, value: metric.value })),
+    auditedAt: report.fetchedAt,
+    source: 'pagespeed',
+  };
 }
 
 function generatePitch(b: Business, problems: string[], lang: 'fr' | 'en'): string {

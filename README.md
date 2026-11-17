@@ -25,16 +25,21 @@ Copiez `.env.example` en `.env` et renseignez vos identifiants Supabase.
 Secrets à définir sur le projet Supabase (Project Settings → Edge Functions → Secrets) :
 
 - `GEOAPIFY_API_KEY` — clé API Geoapify (gratuite sur geoapify.com), utilisée par la fonction `discover-businesses`.
+- `PAGESPEED_API_KEY` — clé Google PageSpeed Insights, utilisée pour auditer les sites web (performance mobile, accessibilité, bonnes pratiques et SEO). Les audits sont réservés au Premium; la clé reste côté Edge Function.
 - `CAMPAY_USERNAME`, `CAMPAY_PASSWORD`, `CAMPAY_BASE_URL` (optionnel, défaut `https://demo.campay.net`) — identifiants CamPay.
 - `MAVIANCE_BASE_URL`, `MAVIANCE_API_KEY` — identifiants Maviance.
 - `CAMPAY_WEBHOOK_SECRET`, `MAVIANCE_WEBHOOK_SECRET` (optionnel mais recommandé) — secret partagé vérifié sur les webhooks de confirmation de paiement.
+
+Le scan gratuit est limité à une utilisation par identifiant de compte Supabase, même si l’utilisateur change l’adresse e-mail de ce compte. Les scans gratuits ne sont pas ajoutés à l’historique; la sauvegarde des scans est réservée au Premium. Aucune empreinte IP/appareil n’est conservée : la création d’un nouveau compte reste impossible à relier de façon fiable sans vérification d’identité ou collecte supplémentaire de données.
+
+L’audit PageSpeed mesure des signaux techniques mobiles, d’accessibilité, de bonnes pratiques et de SEO. Il ne prétend pas évaluer l’esthétique, l’originalité ou la qualité éditoriale; ces aspects demandent une revue humaine.
 
 Déployer les fonctions et migrations :
 
 ```sh
 npx supabase link --project-ref <votre-project-ref>
 npx supabase db push
-npx supabase functions deploy discover-businesses check-subscription create-payment campay-webhook maviance-webhook daily-notifications
+npx supabase functions deploy discover-businesses audit-website check-subscription create-payment campay-webhook maviance-webhook daily-notifications
 ```
 
 ## Application desktop (Electron)

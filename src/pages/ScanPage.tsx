@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { RadarScanner } from '@/components/RadarScanner';
+import { ScanVisualizer } from '@/components/ScanVisualizer';
 import { BusinessHeroCard } from '@/components/BusinessHeroCard';
 import { BusinessAuditPanel } from '@/components/BusinessAuditPanel';
 import { UpgradeNagDialog } from '@/components/UpgradeNagDialog';
@@ -20,35 +22,78 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { isAdmin, getAvailableRadii, isPremium as checkIsPremium } from '@/lib/admin';
 import { useUsageLimits } from '@/hooks/useUsageLimits';
+import { DISCOVERY_DOMAINS } from '@/lib/discovery';
+import { AuditResult } from '@/lib/audit';
 import {
   Map as MapIcon, List, SlidersHorizontal, X, ExternalLink, Phone, Globe, Star, Loader2,
-  ChevronLeft, ChevronRight, Lock, ArrowUp, Navigation, Mail, MapPin,
+  ChevronLeft, ChevronRight, Lock, ArrowUp, Navigation, Mail, MapPin, Check,
 } from 'lucide-react';
 
 const PAGE_SIZE = 8;
 
 export default function ScanPage() {
-  const { businesses, scanning, scanComplete, scanError, duplicateWarning, startScan, position } = useScanner();
+  const { businesses, scanning, scanComplete, scanError, scanSaveError, scanPhase, scanProgress, serverVerifiedPremium, duplicateWarning, startScan, position } = useScanner();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { t, lang } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [view, setView] = useState<'map' | 'list'>('list');
   const [selected, setSelected] = useState<Business | null>(null);
   const [radius, setRadius] = useState<number | null>(null);
   const [savingLead, setSavingLead] = useState(false);
   const [page, setPage] = useState(0);
   const [userPlan, setUserPlan] = useState('free');
+  const [planLoading, setPlanLoading] = useState(true);
+  const [planCheckFailed, setPlanCheckFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [nag, setNag] = useState<'scan' | 'audit' | 'export' | null>(null);
   const [scanTimestamp, setScanTimestamp] = useState<Date>(new Date());
+  const [websiteAuditScores, setWebsiteAuditScores] = useState<Record<string, { score: number; problems: string[] }>>({});
+  const [selectedDomains, setSelectedDomains] = useState<string[]>(() => {
+    const domain = searchParams.get('domain');
+    return domain && DISCOVERY_DOMAINS.some(item => item.key === domain) ? [domain] : [];
+  });
 
   useEffect(() => {
-    if (!user) return;
-    supabase.functions.invoke('check-subscription').then(({ data }) => {
-      if (data?.plan) setUserPlan(data.plan);
-    }).catch(() => {});
-  }, [user]);
+    if (!user) {
+      setPlanLoading(false);
+      setUserPlan('free');
+      return;
+    }
+    let active = true;
+    setPlanLoading(true);
+    setPlanCheckFailed(false);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('La vérification du forfait dépasse le délai prévu.')), 8000);
+    });
+    Promise.race([supabase.functions.invoke('check-subscription'), timeout])
+      .then(({ data, error }) => {
+        if (error) throw error;
+        if (active) {
+          setUserPlan(data?.plan || 'free');
+          setPlanCheckFailed(false);
+        }
+      }).catch((error: unknown) => {
+        console.error('Unable to verify subscription:', error);
+        if (active) {
+          setUserPlan('free');
+          setPlanCheckFailed(true);
+        }
+      }).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (active) setPlanLoading(false);
+      });
+    return () => { active = false; };
+  }, [user, toast, lang, t]);
+
+  useEffect(() => {
+    if (serverVerifiedPremium === null) return;
+    setUserPlan(serverVerifiedPremium ? 'premium' : 'free');
+    setPlanCheckFailed(false);
+  }, [serverVerifiedPremium]);
 
   const userIsAdmin = isAdmin(user?.email);
   const isPremiumUser = checkIsPremium(userPlan);
@@ -59,9 +104,10 @@ export default function ScanPage() {
     incrementScan, incrementAudit,
   } = useUsageLimits(userPlan);
 
-  // Only businesses that actually need digital help by default (no website),
-  // with an explicit toggle to also see the ones that already have a site.
-  const needsHelp = useMemo(() => businesses.filter(b => showAll || !b.hasWebsite), [businesses, showAll]);
+  const needsHelp = useMemo(
+    () => businesses.filter(b => showAll || !b.hasWebsite || (b.opportunityReasons?.length || 0) >= 4 || (websiteAuditScores[b.id] !== undefined && websiteAuditScores[b.id].score <= 5)),
+    [businesses, showAll, websiteAuditScores]
+  );
 
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
@@ -84,10 +130,13 @@ export default function ScanPage() {
 
   const noWebsite = businesses.filter(b => !b.hasWebsite).length;
   const withWebsite = businesses.filter(b => b.hasWebsite).length;
-
   const handleSaveLead = async (biz: Business) => {
     if (!user) {
-      toast({ title: t('scan.loginRequired'), description: t('scan.loginToSave'), variant: 'destructive' });
+      toast({
+        title: t('scan.loginRequired'),
+        description: lang === 'fr' ? 'Connectez-vous pour lancer votre scan gratuit unique.' : 'Sign in to use your one free scan.',
+        variant: 'destructive',
+      });
       return;
     }
     setSavingLead(true);
@@ -110,10 +159,10 @@ export default function ScanPage() {
         status: 'new',
       });
       if (error) throw error;
-      recordInterest(getBusinessVisual(biz.category).label[lang as 'fr' | 'en'], 3);
+      recordInterest(getBusinessVisual(biz.category).label[lang as 'fr' | 'en'], 3, user.id);
       toast({ title: t('scan.leadSaved'), description: `${biz.name} ${t('scan.leadSavedDesc')}` });
-    } catch (err: any) {
-      toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.error'), variant: 'destructive' });
     } finally {
       setSavingLead(false);
     }
@@ -128,36 +177,38 @@ export default function ScanPage() {
 
   const handleSelectBusiness = (biz: Business) => {
     setSelected(biz);
-    recordInterest(getBusinessVisual(biz.category).label[lang as 'fr' | 'en'], 1);
+    recordInterest(getBusinessVisual(biz.category).label[lang as 'fr' | 'en'], 1, user?.id);
     setTimeout(() => smoothScrollTo('business-detail'), 120);
   };
 
   const backToList = () => smoothScrollTo('scan-results-list');
 
-  const handleNewScan = () => {
+  const runScan = async (resetResults: boolean) => {
     if (!radius) return;
+    if (!user) {
+      toast({
+        title: t('scan.loginRequired'),
+        description: lang === 'fr' ? 'Connectez-vous pour lancer votre scan gratuit unique.' : 'Sign in to use your one free scan.',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (!canScan) {
       setNag('scan');
       return;
     }
-    startScan(radius, user?.id);
-    incrementScan();
-    setScanTimestamp(new Date());
-    setSelected(null);
-    setPage(0);
-    setShowAll(false);
-    setCategoryFilter(null);
-  };
-
-  const handleFirstScan = () => {
-    if (!radius) return;
-    if (!canScan) {
-      setNag('scan');
-      return;
+    if (resetResults) {
+      setSelected(null);
+      setPage(0);
+      setShowAll(false);
+      setCategoryFilter(null);
+      setWebsiteAuditScores({});
     }
-    startScan(radius, user?.id);
-    incrementScan();
-    setScanTimestamp(new Date());
+    const succeeded = await startScan(radius, user.id, isPremiumUser, isPremiumUser ? selectedDomains : undefined, lang as 'fr' | 'en');
+    if (succeeded) {
+      incrementScan();
+      setScanTimestamp(new Date());
+    }
   };
 
   return (
@@ -172,8 +223,14 @@ export default function ScanPage() {
 
             <RadarScanner
               scanning={scanning}
-              onScan={handleFirstScan}
-              disabled={!radius}
+              onScan={() => {
+                if (!user) {
+                  navigate('/auth?redirect=%2Fscan');
+                  return;
+                }
+                void runScan(false);
+              }}
+              disabled={!radius || scanning}
               label={lang === 'fr' ? 'Scanner' : 'Scan'}
               scanningLabel={t('scan.scanning')}
             />
@@ -210,6 +267,68 @@ export default function ScanPage() {
                   {scanCount}/{limits.maxScansTotal} {lang === 'fr' ? 'scans utilisés' : 'scans used'}
                 </p>
               )}
+              {isPremiumUser && (
+                <div className="mt-4 w-full max-w-xl rounded-2xl border border-primary/20 bg-card/45 p-4 text-left backdrop-blur-xl">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold">{lang === 'fr' ? 'Domaines à rechercher' : 'Domains to search'}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {selectedDomains.length === 0
+                          ? (lang === 'fr' ? 'Tous les domaines' : 'All domains')
+                          : (lang === 'fr' ? `${selectedDomains.length} domaine(s) sélectionné(s)` : `${selectedDomains.length} domain(s) selected`)}
+                      </p>
+                    </div>
+                    {selectedDomains.length > 0 && (
+                      <button type="button" className="text-[10px] text-primary hover:underline" onClick={() => setSelectedDomains([])}>
+                        {lang === 'fr' ? 'Tout effacer' : 'Clear'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DISCOVERY_DOMAINS.map(domain => {
+                      const active = selectedDomains.includes(domain.key);
+                      return (
+                        <button
+                          key={domain.key}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => setSelectedDomains(current => active
+                            ? current.filter(key => key !== domain.key)
+                            : [...current, domain.key])}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-medium transition-colors ${
+                            active ? 'border-primary/50 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
+                          }`}
+                        >
+                          {active && <Check className="h-3 w-3" />}
+                          {domain.label[lang as 'fr' | 'en']}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {user && planLoading && (
+                <p role="status" className="text-[10px] text-muted-foreground">
+                  {lang === 'fr'
+                    ? 'Vérification du forfait en arrière-plan; vous pouvez lancer le scan sans attendre.'
+                    : 'Checking your plan in the background; you can start scanning without waiting.'}
+                </p>
+              )}
+              {user && planCheckFailed && (
+                <p role="status" className="max-w-xl text-center text-[10px] text-muted-foreground">
+                  {lang === 'fr'
+                    ? 'Le forfait n’a pas pu être chargé. Le serveur vérifiera vos droits pendant le scan.'
+                    : 'Your plan could not be loaded. The server will verify your access during the scan.'}
+                </p>
+              )}
+              {!user && (
+                <div className="glass flex max-w-sm flex-col items-center gap-2 rounded-xl p-4 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    {lang === 'fr' ? 'Connectez-vous pour utiliser votre scan gratuit unique.' : 'Sign in to use your one free scan.'}
+                  </p>
+                  <Button size="sm" asChild><Link to="/auth">{t('nav.signIn')}</Link></Button>
+                </div>
+              )}
               {!userIsAdmin && userPlan === 'free' && (
                 <Button size="sm" variant="ghost" className="text-xs h-7 text-muted-foreground mt-1" asChild>
                   <a href="/pricing">
@@ -219,18 +338,24 @@ export default function ScanPage() {
               )}
             </div>
 
-            {scanning && (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs sm:text-sm text-muted-foreground font-mono">
-                {t('scan.scanning')} ({radius}km)...
-              </motion.p>
-            )}
+            <AnimatePresence>
+              {scanning && (
+                <ScanVisualizer
+                  phase={scanPhase === 'location' ? 'location' : scanPhase === 'discovery' ? 'discovery' : 'qualification'}
+                  radiusKm={radius || 0}
+                  position={position}
+                  progress={scanProgress}
+                  lang={lang as 'fr' | 'en'}
+                />
+              )}
+            </AnimatePresence>
           </div>
         )}
 
         {scanError && !scanComplete && (
           <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
             <p className="text-destructive text-sm text-center px-4">{scanError}</p>
-            <Button onClick={() => { if (radius) startScan(radius); }} disabled={!radius}>{t('scan.retry')}</Button>
+            <Button onClick={() => { void runScan(false); }} disabled={!radius || scanning}>{t('scan.retry')}</Button>
           </div>
         )}
 
@@ -240,6 +365,11 @@ export default function ScanPage() {
               <div className="mb-4 p-3 rounded-lg border border-warning/40 bg-warning/10 text-xs sm:text-sm text-warning-foreground">
                 <span className="font-semibold">⚠ </span>{duplicateWarning}
                 <a href="/dashboard" className="ml-2 text-primary underline text-xs">Voir l'historique</a>
+              </div>
+            )}
+            {scanSaveError && (
+              <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                {lang === 'fr' ? `Résultats affichés, mais l’historique Premium n’a pas pu être sauvegardé : ${scanSaveError}` : `Results are shown, but the Premium history could not be saved: ${scanSaveError}`}
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
@@ -260,7 +390,7 @@ export default function ScanPage() {
                   <MapIcon className="w-3.5 h-3.5" />
                 </Button>
               </div>
-              <Button size="sm" variant="outline" onClick={handleNewScan} className="h-7 text-xs">
+              <Button size="sm" variant="outline" onClick={() => { void runScan(true); }} className="h-7 text-xs">
                 <SlidersHorizontal className="w-3 h-3 mr-1" /> {t('scan.rescan')}
               </Button>
               {position && (
@@ -273,12 +403,17 @@ export default function ScanPage() {
                 />
               )}
             </div>
+            <p className="mb-3 text-[10px] text-muted-foreground">
+              {lang === 'fr'
+                ? `Les ${businesses.length} résultats ont été vérifiés dans un rayon de ${radius} km autour de votre position GPS.`
+                : `All ${businesses.length} results were verified within ${radius} km of your GPS position.`}
+            </p>
 
             {/* Category filter chips — most critical business types surface first */}
             {categories.length > 1 && (
               <div className="flex flex-wrap items-center gap-1.5 mb-3">
                 <button
-                  onClick={() => setCategoryFilter(null)}
+                  onClick={() => { setCategoryFilter(null); setPage(0); }}
                   className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
                     !categoryFilter ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
                   }`}
@@ -288,7 +423,7 @@ export default function ScanPage() {
                 {categories.map(([label, count]) => (
                   <button
                     key={label}
-                    onClick={() => setCategoryFilter(categoryFilter === label ? null : label)}
+                    onClick={() => { setCategoryFilter(categoryFilter === label ? null : label); setPage(0); }}
                     className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
                       categoryFilter === label ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/40'
                     }`}
@@ -305,8 +440,8 @@ export default function ScanPage() {
                 className="text-[11px] text-muted-foreground hover:text-primary underline underline-offset-2 mb-4 block"
               >
                 {showAll
-                  ? (lang === 'fr' ? 'Masquer celles qui ont déjà un site' : 'Hide the ones that already have a website')
-                  : (lang === 'fr' ? `Afficher aussi celles qui ont déjà un site (${withWebsite})` : `Also show the ones that already have a website (${withWebsite})`)}
+                  ? (lang === 'fr' ? 'Masquer les sites référencés' : 'Hide businesses with a listed website')
+                    : (lang === 'fr' ? `Afficher aussi les sites référencés (${withWebsite})` : `Also show listed websites (${withWebsite})`)}
               </button>
             )}
 
@@ -323,7 +458,9 @@ export default function ScanPage() {
                       {pagedBusinesses.map((biz, i) => (
                         <BusinessHeroCard
                           key={biz.id}
-                          business={biz}
+                          business={websiteAuditScores[biz.id]
+                            ? { ...biz, websiteAuditScore: websiteAuditScores[biz.id].score, websiteAuditProblems: websiteAuditScores[biz.id].problems }
+                            : biz}
                           lang={lang as 'fr' | 'en'}
                           rank={page * PAGE_SIZE + i}
                           featured={page === 0 && i === 0}
@@ -447,9 +584,37 @@ export default function ScanPage() {
                       </div>
 
                       <div className="glass rounded-lg p-3 sm:p-4">
-                        <div className="text-xs font-semibold mb-1">{t('scan.opportunityScore')}</div>
+                        <div className="text-xs font-semibold mb-1">
+                          {lang === 'fr' ? 'Score de priorité de prospection' : 'Prospecting priority score'}
+                        </div>
                         <div className="text-2xl sm:text-3xl font-mono font-black text-primary">{selected.opportunityScore}/10</div>
+                        <p className="mt-1 text-[9px] leading-relaxed text-muted-foreground">
+                          {lang === 'fr'
+                            ? 'Calculé à partir des informations publiques disponibles (site, téléphone, email, réseaux, horaires) — ce n’est pas un audit technique du site.'
+                            : 'Based on available public listing details (website, phone, email, social links, hours) — this is not a technical website audit.'}
+                        </p>
                       </div>
+
+                      {selected.opportunityReasons && selected.opportunityReasons.length > 0 && (
+                        <div className="glass rounded-lg p-3">
+                          <p className="mb-1.5 text-[10px] font-semibold">
+                            {lang === 'fr' ? 'Éléments publics à vérifier' : 'Public listing signals to review'}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {selected.opportunityReasons.map(reason => (
+                              <Badge key={reason} variant="outline" className="text-[9px]">
+                                {({
+                                  no_website: lang === 'fr' ? 'Aucun site référencé' : 'No website listed',
+                                  no_phone: lang === 'fr' ? 'Téléphone absent' : 'No phone listed',
+                                  no_email: lang === 'fr' ? 'Email absent' : 'No email listed',
+                                  no_social: lang === 'fr' ? 'Réseaux absents' : 'No social link listed',
+                                  no_opening_hours: lang === 'fr' ? 'Horaires absents' : 'No opening hours listed',
+                                } as Record<string, string>)[reason] || reason}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {!selected.hasWebsite && (
                         <div className="glass rounded-lg p-3 border-opportunity/30">
@@ -463,6 +628,11 @@ export default function ScanPage() {
                         canAudit={canAudit}
                         lang={lang as 'fr' | 'en'}
                         onAuditGenerated={incrementAudit}
+                        onAuditResult={(audit: AuditResult) => {
+                          if (audit.source === 'pagespeed') {
+                            setWebsiteAuditScores(current => ({ ...current, [selected.id]: { score: audit.score, problems: audit.problems } }));
+                          }
+                        }}
                         onUpgradeClick={() => setNag('audit')}
                       />
 
@@ -470,6 +640,19 @@ export default function ScanPage() {
                         {savingLead && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
                         {t('scan.save')}
                       </Button>
+                      <div className="space-y-1.5">
+                        <Button asChild size="sm" className="h-10 w-full gap-2 whitespace-normal bg-gradient-to-r from-primary to-emerald-500 text-xs text-primary-foreground shadow-lg shadow-primary/20 hover:opacity-95">
+                          <a href="https://kroma-agence.com/" target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                            {selected.hasWebsite
+                              ? (lang === 'fr' ? 'Améliorer ce site avec Kroma' : 'Improve this website with Kroma')
+                              : (lang === 'fr' ? 'Créer le site de ce prospect avec Kroma' : 'Build this prospect’s website with Kroma')}
+                          </a>
+                        </Button>
+                        <p className="text-center text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          {lang === 'fr' ? 'Kroma Agence · Partenaire de Devora' : 'Kroma Agency · Devora partner'}
+                        </p>
+                      </div>
                     </motion.div>
                   ) : (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-lg p-6 text-center">

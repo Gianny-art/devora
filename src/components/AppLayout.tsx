@@ -1,17 +1,15 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/NotificationBell';
 import { Radar, LayoutDashboard, Users, LogOut, Settings, UserCircle, Handshake } from 'lucide-react';
-import { useRef } from 'react';
-import devoraLogo from '@/assets/devora-logo.png';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
   const { t } = useTranslation();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const navItems = [
     { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -21,33 +19,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { to: '/settings', label: t('nav.settings'), icon: Settings },
   ];
 
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
-  const currentIndex = navItems.findIndex(n => n.to === location.pathname);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    touchStartX.current = null;
-    touchStartY.current = null;
-    if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy)) return;
-    if (currentIndex === -1) return;
-    if (dx < 0 && currentIndex < navItems.length - 1) navigate(navItems[currentIndex + 1].to);
-    else if (dx > 0 && currentIndex > 0) navigate(navItems[currentIndex - 1].to);
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
           <Link to="/landing" className="flex items-center gap-1.5 shrink-0">
-            <img src={devoraLogo} alt="DEVora" className="h-9 sm:h-11 w-auto object-contain" />
+            <BrandLogo compact />
           </Link>
 
           {/* Desktop nav */}
@@ -93,7 +70,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <main className="pt-14 sm:pt-16 pb-16 md:pb-0 min-h-screen" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <main className="pt-14 sm:pt-16 pb-16 md:pb-0 min-h-screen">
         {children}
       </main>
 

@@ -18,7 +18,7 @@ import { useUsageLimits } from '@/hooks/useUsageLimits';
 import { Business } from '@/types';
 import {
   Send, Users, Building2, Plus, UserPlus, Loader2, Trash2,
-  X, Phone, Mail, Globe, Star, MapPin, Navigation, ExternalLink,
+  X, Phone, Mail, Globe, Star, MapPin, Navigation, ExternalLink, Search,
 } from 'lucide-react';
 import { ProjectChat } from '@/components/ProjectChat';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -32,7 +32,7 @@ type LeadRow = {
   business_rating: number | null; business_website: string | null; has_website: boolean;
   opportunity_score: number | null; lat: number | null; lng: number | null;
 };
-type ProjectBiz = { id: string; lead_id: string; lead?: LeadRow };
+type ProjectBiz = { id: string; lead_id: string; status: string; lead?: LeadRow };
 
 const leadToBusiness = (lead: LeadRow): Business => ({
   id: lead.id,
@@ -64,9 +64,11 @@ export default function ProjectPage() {
   const [memberSearch, setMemberSearch] = useState('');
   const [memberResults, setMemberResults] = useState<any[]>([]);
   const [userLeads, setUserLeads] = useState<any[]>([]);
+  const [projectSearch, setProjectSearch] = useState('');
+  const [projectStatus, setProjectStatus] = useState('all');
   const [memberProfiles, setMemberProfiles] = useState<Record<string, { full_name: string | null; email: string | null; avatar_url: string | null }>>({});
   const [confirmAction, setConfirmAction] = useState<{ title: string; description: string; onConfirm: () => void } | null>(null);
-  const [selectedBiz, setSelectedBiz] = useState<{ business: Business; projectBizId: string } | null>(null);
+  const [selectedBiz, setSelectedBiz] = useState<{ business: Business; projectBizId: string; status: string } | null>(null);
   const [userPlan, setUserPlan] = useState('free');
   const [nag, setNag] = useState(false);
   const { canAudit, incrementAudit } = useUsageLimits(userPlan);
@@ -98,13 +100,13 @@ export default function ProjectPage() {
       }
     }
 
-    const { data: bizs } = await supabase.from('project_businesses').select('id, lead_id').eq('project_id', projectId!) as any;
+    const { data: bizs } = await supabase.from('project_businesses').select('id, lead_id, status').eq('project_id', projectId!);
     if (bizs && bizs.length > 0) {
-      const leadIds = bizs.map((b: any) => b.lead_id);
+      const leadIds = bizs.map(b => b.lead_id);
       const { data: leads } = await supabase.from('leads').select(
         'id, business_name, business_address, business_city, business_district, business_phone, business_email, business_category, business_rating, business_website, has_website, opportunity_score, lat, lng'
       ).in('id', leadIds);
-      const enriched = bizs.map((b: any) => ({ ...b, lead: leads?.find((l: any) => l.id === b.lead_id) }));
+      const enriched = bizs.map(b => ({ ...b, lead: leads?.find(l => l.id === b.lead_id) }));
       setBusinesses(enriched);
     } else {
       setBusinesses([]);
@@ -155,6 +157,21 @@ export default function ProjectPage() {
     });
   };
 
+  const updateProjectLeadStatus = async (projectBizId: string, status: string) => {
+    if (!projectId) return;
+    const { error } = await supabase
+      .from('project_businesses')
+      .update({ status })
+      .eq('id', projectBizId)
+      .eq('project_id', projectId);
+    if (error) {
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
+      return;
+    }
+    setBusinesses(current => current.map(item => item.id === projectBizId ? { ...item, status } : item));
+    setSelectedBiz(current => current?.projectBizId === projectBizId ? { ...current, status } : current);
+  };
+
   const removeMember = (memberId: string) => {
     setConfirmAction({
       title: lang === 'fr' ? 'Retirer ce membre ?' : 'Remove this member?',
@@ -171,11 +188,32 @@ export default function ProjectPage() {
     return <AppLayout><div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div></AppLayout>;
   }
 
+  const visibleBusinesses = businesses.filter(item => {
+    const query = projectSearch.toLowerCase().trim();
+    const matchesSearch = !query || `${item.lead?.business_name || ''} ${item.lead?.business_category || ''}`.toLowerCase().includes(query);
+    return matchesSearch && (projectStatus === 'all' || item.status === projectStatus);
+  });
+  const projectStatusLabels: Record<string, { fr: string; en: string }> = {
+    new: { fr: 'Nouveau', en: 'New' },
+    contacted: { fr: 'Contacté', en: 'Contacted' },
+    interested: { fr: 'Intéressé', en: 'Interested' },
+    proposal: { fr: 'Proposition', en: 'Proposal' },
+    closed: { fr: 'Gagné', en: 'Won' },
+    lost: { fr: 'Perdu', en: 'Lost' },
+  };
+
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
         <div>
-          <h1 className="text-xl font-bold">{project.name}</h1>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-bold">{project.name}</h1>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {businesses.length} {lang === 'fr' ? 'prospect(s)' : 'prospect(s)'} · {members.length} {lang === 'fr' ? 'membre(s)' : 'member(s)'}
+              </p>
+            </div>
+          </div>
           {project.description && <p className="text-xs text-muted-foreground">{project.description}</p>}
         </div>
 
@@ -197,19 +235,33 @@ export default function ProjectPage() {
         {tab === 'businesses' && (
           <div className="grid lg:grid-cols-2 gap-4 items-start">
             <div className="space-y-3">
+              <div className="glass rounded-2xl p-3 space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input value={projectSearch} onChange={event => setProjectSearch(event.target.value)} placeholder={lang === 'fr' ? 'Rechercher un prospect du projet…' : 'Search project prospects…'} className="h-9 bg-background/50 pl-9 text-xs" />
+                </div>
+                <select value={projectStatus} onChange={event => setProjectStatus(event.target.value)} className="h-9 w-full rounded-md border border-input bg-background/50 px-3 text-xs">
+                  <option value="all">{lang === 'fr' ? 'Tous les statuts' : 'All statuses'}</option>
+                  {Object.entries(projectStatusLabels).map(([key, label]) => <option key={key} value={key}>{label[lang as 'fr' | 'en']}</option>)}
+                </select>
+                <p className="text-[10px] text-muted-foreground">{visibleBusinesses.length} / {businesses.length} {lang === 'fr' ? 'prospect(s) affiché(s)' : 'prospect(s) shown'}</p>
+              </div>
               {businesses.length === 0 && (
                 <div className="glass rounded-lg p-6 text-center text-xs text-muted-foreground">
                   {lang === 'fr' ? 'Aucune entreprise partagée dans ce projet pour le moment.' : 'No business shared in this project yet.'}
                 </div>
               )}
-              {businesses.filter(b => b.lead).map((b, i) => (
+              {visibleBusinesses.filter(b => b.lead).map((b, i) => (
                 <div key={b.id} className="relative">
+                  <div className="absolute left-2 top-2 z-10 rounded-full border border-border/70 bg-background/80 px-2 py-1 text-[9px] font-medium backdrop-blur-md">
+                    {projectStatusLabels[b.status]?.[lang as 'fr' | 'en'] || b.status}
+                  </div>
                   <BusinessHeroCard
                     business={leadToBusiness(b.lead!)}
                     lang={lang as 'fr' | 'en'}
                     rank={i}
                     active={selectedBiz?.projectBizId === b.id}
-                    onConsult={() => setSelectedBiz({ business: leadToBusiness(b.lead!), projectBizId: b.id })}
+                    onConsult={() => setSelectedBiz({ business: leadToBusiness(b.lead!), projectBizId: b.id, status: b.status })}
                   />
                   <Button
                     size="icon" variant="ghost"
@@ -220,6 +272,11 @@ export default function ProjectPage() {
                   </Button>
                 </div>
               ))}
+              {businesses.length > 0 && visibleBusinesses.length === 0 && (
+                <div className="glass rounded-xl p-6 text-center text-xs text-muted-foreground">
+                  {lang === 'fr' ? 'Aucun prospect ne correspond à ces filtres.' : 'No prospects match these filters.'}
+                </div>
+              )}
 
               <div className="glass rounded-lg p-3 space-y-2">
                 <h3 className="text-xs font-semibold">{t('collab.addBusiness')}</h3>
@@ -305,12 +362,49 @@ export default function ProjectPage() {
                       )}
                     </div>
 
+                    <div className="glass rounded-xl p-3">
+                      <label htmlFor="project-lead-status" className="mb-1.5 block text-[10px] font-semibold">
+                        {lang === 'fr' ? 'Statut de ce prospect dans le projet' : 'Prospect status in this project'}
+                      </label>
+                      <select
+                        id="project-lead-status"
+                        value={selectedBiz.status}
+                        onChange={event => { void updateProjectLeadStatus(selectedBiz.projectBizId, event.target.value); }}
+                        className="h-9 w-full rounded-md border border-input bg-background/50 px-3 text-xs"
+                      >
+                        {Object.entries(projectStatusLabels).map(([key, label]) => <option key={key} value={key}>{label[lang as 'fr' | 'en']}</option>)}
+                      </select>
+                    </div>
+
                     {selectedBiz.business.opportunityScore !== undefined && (
                       <div className="glass rounded-lg p-3 sm:p-4">
                         <div className="text-xs font-semibold mb-1">{t('scan.opportunityScore')}</div>
                         <div className="text-2xl sm:text-3xl font-mono font-black text-primary">{selectedBiz.business.opportunityScore}/10</div>
                       </div>
                     )}
+
+                    <div className="glass-strong relative overflow-hidden rounded-2xl border-primary/25 p-5 sm:p-6">
+                      <div className="pointer-events-none absolute -right-10 -top-14 h-36 w-36 rounded-full bg-primary/15 blur-3xl" />
+                      <div className="relative">
+                        <Badge className="mb-3 border-primary/25 bg-primary/10 text-primary">
+                          {lang === 'fr' ? 'Partenaire officiel' : 'Official partner'}
+                        </Badge>
+                        <h3 className="text-base font-bold sm:text-lg">
+                          {lang === 'fr' ? 'Confectionner le site de cette entreprise' : 'Build this business a website'}
+                        </h3>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          {lang === 'fr'
+                            ? 'Parlez du projet à Kroma Agence, partenaire de Devora, et transformez cette opportunité en présence digitale.'
+                            : 'Discuss the project with Kroma Agency, Devora’s partner, and turn this opportunity into a digital presence.'}
+                        </p>
+                        <Button asChild size="lg" className="mt-4 h-11 w-full gap-2 rounded-xl text-sm shadow-lg shadow-primary/20">
+                          <a href="https://kroma-agence.com/" target="_blank" rel="noopener noreferrer">
+                            {lang === 'fr' ? 'Créer le site avec Kroma Agence' : 'Build with Kroma Agency'}
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
 
                     <BusinessAuditPanel
                       business={selectedBiz.business}

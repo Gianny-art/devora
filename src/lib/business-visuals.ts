@@ -38,21 +38,22 @@ export function getBusinessVisual(category?: string | null): Visual {
 
 /** Human-readable need summary used under the business name. */
 export function getNeedSummary(
-  opts: { name: string; category?: string | null; hasWebsite: boolean; opportunityScore?: number | null; rating?: number | null },
+  opts: { name: string; category?: string | null; hasWebsite: boolean; opportunityScore?: number | null; websiteAuditScore?: number | null; rating?: number | null },
   lang: 'fr' | 'en' = 'fr'
 ): string {
   const sector = getBusinessVisual(opts.category).label[lang];
   const score = opts.opportunityScore || 0;
+  const auditScore = opts.websiteAuditScore;
   if (lang === 'en') {
     if (!opts.hasWebsite) return `${sector} · no website yet — prime candidate for a first digital presence.`;
-    if (score >= 7) return `${sector} · online presence is weak and losing customers.`;
-    if (score >= 4) return `${sector} · site exists but needs a redesign and SEO work.`;
-    return `${sector} · solid presence, room for optimisation.`;
+    if (auditScore !== undefined && auditScore <= 5) return `${sector} · PageSpeed detected technical issues (site score ${auditScore}/10); review the report before outreach.`;
+    if (score >= 4) return `${sector} · public business details are incomplete; a technical website audit is needed before judging site quality.`;
+    return `${sector} · website listed; verify its technical quality before proposing changes.`;
   }
   if (!opts.hasWebsite) return `${sector} · aucun site web — candidat idéal pour une première présence en ligne.`;
-  if (score >= 7) return `${sector} · présence en ligne faible, des clients lui échappent.`;
-  if (score >= 4) return `${sector} · site existant à refondre, SEO à renforcer.`;
-  return `${sector} · présence correcte, optimisations possibles.`;
+  if (auditScore !== undefined && auditScore <= 5) return `${sector} · PageSpeed a relevé des problèmes techniques (score site ${auditScore}/10) ; consultez le rapport avant la prise de contact.`;
+  if (score >= 4) return `${sector} · fiche publique incomplète ; un audit technique est nécessaire avant de juger la qualité du site.`;
+  return `${sector} · site référencé ; vérifiez sa qualité technique avant de proposer des changements.`;
 }
 
 /** Short contextual blurb shown before the technical details on mobile — why this business matters. */
@@ -78,10 +79,12 @@ export function getBusinessStory(
   return `${opts.name} est un commerce local du secteur ${sector}${location}, qui dispose déjà d'une présence en ligne. Un examen plus poussé pourrait révéler des leviers rapides pour attirer encore plus de clients.`;
 }
 
-export function getNeedLevel(hasWebsite: boolean, score?: number | null): { fr: string; en: string; tone: 'critical' | 'high' | 'medium' | 'low' } {
+export function getNeedLevel(hasWebsite: boolean, score?: number | null, websiteAuditScore?: number | null): { fr: string; en: string; tone: 'critical' | 'high' | 'medium' | 'low' } {
   const s = score || 0;
   if (!hasWebsite) return { fr: 'Besoin critique', en: 'Critical need', tone: 'critical' };
-  if (s >= 7) return { fr: 'Fort besoin', en: 'High need', tone: 'high' };
-  if (s >= 4) return { fr: 'Besoin modéré', en: 'Moderate need', tone: 'medium' };
-  return { fr: 'Faible besoin', en: 'Low need', tone: 'low' };
+  if (websiteAuditScore !== undefined && websiteAuditScore !== null && websiteAuditScore <= 5) {
+    return { fr: 'Faiblesses détectées', en: 'Issues detected', tone: 'high' };
+  }
+  if (s >= 4) return { fr: 'À vérifier', en: 'Needs review', tone: 'medium' };
+  return { fr: 'Site référencé', en: 'Website listed', tone: 'low' };
 }

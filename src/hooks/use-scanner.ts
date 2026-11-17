@@ -2,6 +2,15 @@ import { useState } from 'react';
 import { Business } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateOpportunityScore } from '@/lib/mock-data';
+import { recordScanOutcomes } from '@/lib/interest';
+import { filterBusinessesByDomains } from '@/lib/discovery';
+
+type DiscoverBusinessesResponse = {
+  success: boolean;
+  premium?: boolean;
+  businesses: Business[];
+  error?: string;
+};
 
 export function useGeolocation() {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -13,10 +22,10 @@ export function useGeolocation() {
       setLoading(true);
       setError(null);
       if (!navigator.geolocation) {
-        const err = 'Geolocation is not supported';
+        const err = 'La géolocalisation n’est pas prise en charge par cet appareil.';
         setError(err);
         setLoading(false);
-        reject(err);
+        reject(new Error(err));
         return;
       }
       navigator.geolocation.getCurrentPosition(
@@ -28,21 +37,10 @@ export function useGeolocation() {
         },
         (err) => {
           console.error('Geolocation error:', err.message);
-          setError('Impossible d\'obtenir votre position. Veuillez activer la localisation dans les paramètres de votre navigateur.');
+          const message = 'Impossible d’obtenir votre position exacte. Autorisez la localisation puis réessayez.';
+          setError(message);
           setLoading(false);
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-              setPosition(loc);
-              resolve(loc);
-            },
-            () => {
-              const fallback = { lat: 3.8667, lng: 11.5167 };
-              setPosition(fallback);
-              resolve(fallback);
-            },
-            { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
-          );
+          reject(new Error(message));
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
@@ -57,6 +55,15 @@ export function useScanner() {
   const [scanning, setScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [scanSaveError, setScanSaveError] = useState<string | null>(null);
+  const [scanPhase, setScanPhase] = useState<'idle' | 'location' | 'discovery' | 'qualification' | 'complete'>('idle');
+  const [serverVerifiedPremium, setServerVerifiedPremium] = useState<boolean | null>(null);
+  const [scanProgress, setScanProgress] = useState<{ scanned: number; total: number; current: Business | null; recent: Business[] }>({
+    scanned: 0,
+    total: 0,
+    current: null,
+    recent: [],
+  });
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const geo = useGeolocation();
 
@@ -102,55 +109,93 @@ export function useScanner() {
     }
   };
 
-  const startScan = async (radius = 5, userId?: string) => {
+  const startScan = async (radius = 5, userId?: string, premium = false, domains?: string[], lang: 'fr' | 'en' = 'fr'): Promise<boolean> => {
     setScanning(true);
+    setScanPhase('location');
     setScanComplete(false);
     setScanError(null);
+    setScanSaveError(null);
     setDuplicateWarning(null);
+    setServerVerifiedPremium(null);
     setBusinesses([]);
+    setScanProgress({ scanned: 0, total: 0, current: null, recent: [] });
 
     try {
       const pos = await geo.getPosition();
+      setScanPhase('discovery');
 
-      const timeoutMs = radius > 100 ? 45000 : 20000;
-      const invokePromise = supabase.functions.invoke('discover-businesses', {
-        body: { lat: pos.lat, lng: pos.lng, radius },
+      const timeoutMs = radius > 100 ? 140000 : 60000;
+      const invokePromise = supabase.functions.invoke<DiscoverBusinessesResponse>('discover-businesses', {
+        body: { lat: pos.lat, lng: pos.lng, radius, ...(domains?.length ? { domains } : {}) },
       });
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Le scan prend plus de temps que prévu. Réessayez ou réduisez le rayon.')), timeoutMs);
+        timeoutId = setTimeout(() => reject(new Error('Le scan prend plus de temps que prévu. Réessayez ou réduisez le rayon.')), timeoutMs);
       });
 
-      const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
+      const { data, error } = await Promise.race([invokePromise, timeoutPromise]).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+      });
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        let message = error.message;
+        const context = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        if (context?.json) {
+          try {
+            const body = await context.json();
+            if (body.error) message = body.error;
+          } catch {
+            // Keep the original Functions error when the response body is unavailable.
+          }
+        }
+        throw new Error(message);
+      }
       if (!data?.success) throw new Error(data?.error || 'Scan failed');
+      const verifiedPremium = data.premium ?? premium;
+      setServerVerifiedPremium(verifiedPremium);
 
-      const results: Business[] = (data.businesses || []).map((biz: any) => ({
+      setScanPhase('qualification');
+      const discovered: Business[] = (data.businesses || []).map(biz => ({
         ...biz,
         rating: biz.rating || null,
-        opportunityScore: biz.opportunityScore || calculateOpportunityScore(biz.hasWebsite, undefined, biz.rating),
+        opportunityScore: biz.opportunityScore ?? calculateOpportunityScore(biz.hasWebsite, undefined, biz.rating),
       }));
+      const results = filterBusinessesByDomains(discovered, domains);
 
       setBusinesses(results);
-      setScanComplete(true);
+      recordScanOutcomes(results, lang, userId);
+      const candidates = results.filter(business =>
+        !business.hasWebsite || (business.opportunityReasons?.length || 0) >= 4
+      );
+      const animationSteps = Math.min(candidates.length, 20);
+      for (let step = 0; step < animationSteps; step += 1) {
+        await new Promise(resolve => setTimeout(resolve, 110));
+        const scanned = Math.ceil(((step + 1) / animationSteps) * candidates.length);
+        setScanProgress({
+          scanned,
+          total: candidates.length,
+          current: candidates[scanned - 1],
+          recent: candidates.slice(Math.max(0, scanned - 4), scanned),
+        });
+      }
 
       // Check for duplicate scan
-      if (userId && results.length > 0) {
+      if (verifiedPremium && userId && results.length > 0) {
         const warning = await checkDuplicateScan(userId, results);
         if (warning) setDuplicateWarning(warning);
       }
 
-      // Auto-save scan + businesses to database
-      if (userId && results.length > 0) {
-        const { data: scanRow } = await supabase.from('scans').insert({
-          user_id: userId,
-          lat: pos.lat,
-          lng: pos.lng,
-          radius,
-          business_count: results.length,
-        }).select('id').single();
+      if (verifiedPremium && userId && results.length > 0) {
+        try {
+          const { data: scanRow, error: scanError } = await supabase.from('scans').insert({
+            user_id: userId,
+            lat: pos.lat,
+            lng: pos.lng,
+            radius,
+            business_count: results.length,
+          }).select('id').single();
+          if (scanError) throw scanError;
 
-        if (scanRow?.id) {
           const bizRows = results.map((b: Business) => ({
             scan_id: scanRow.id,
             name: b.name,
@@ -163,20 +208,28 @@ export function useScanner() {
             rating: b.rating || null,
             website: b.website || null,
             has_website: b.hasWebsite,
-            opportunity_score: b.opportunityScore || null,
+            opportunity_score: b.opportunityScore ?? null,
             lat: b.lat,
             lng: b.lng,
           }));
-          await supabase.from('scan_businesses').insert(bizRows);
+          const { error: businessesError } = await supabase.from('scan_businesses').insert(bizRows);
+          if (businessesError) throw businessesError;
+        } catch (error) {
+          console.error('Unable to save premium scan:', error);
+          setScanSaveError(error instanceof Error ? error.message : 'Impossible d’enregistrer ce scan.');
         }
       }
-    } catch (err: any) {
+      setScanComplete(true);
+      setScanPhase('complete');
+      return true;
+    } catch (err: unknown) {
       console.error('Scan error:', err);
-      setScanError(err.message || 'Scan failed');
+      setScanError(err instanceof Error ? err.message : 'Scan failed');
+      return false;
     } finally {
       setScanning(false);
     }
   };
 
-  return { ...geo, businesses, scanning, scanComplete, scanError, duplicateWarning, startScan };
+  return { ...geo, businesses, scanning, scanComplete, scanError, scanSaveError, scanPhase, scanProgress, serverVerifiedPremium, duplicateWarning, startScan };
 }

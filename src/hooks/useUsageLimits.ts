@@ -19,16 +19,23 @@ export function useUsageLimits(userPlan: string) {
       return;
     }
     fetchCounts();
-  }, [user]);
+  }, [user, userPlan]);
 
   const fetchCounts = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const { count } = await supabase.from('scans').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
-      setScanCount(count ?? 0);
-    } catch {
-      // fallback
+      if (userPlan === 'premium') {
+        const { count, error } = await supabase.from('scans').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
+        if (error) throw error;
+        setScanCount(count ?? 0);
+      } else {
+        const { data, error } = await supabase.rpc('get_free_scan_used');
+        if (error) throw error;
+        setScanCount(data ? 1 : 0);
+      }
+    } catch (error) {
+      console.error('Unable to load scan usage:', error);
     } finally {
       setLoading(false);
     }

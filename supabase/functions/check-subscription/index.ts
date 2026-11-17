@@ -45,9 +45,17 @@ Deno.serve(async (req) => {
       await supabaseClient.from('profiles').update({ plan: 'free', plan_expires_at: null }).eq('id', userData.user.id);
     }
 
+    const { data: freeScan, error: freeScanError } = await supabaseClient
+      .from('free_scan_usage')
+      .select('user_id')
+      .eq('user_id', userData.user.id)
+      .maybeSingle();
+    if (freeScanError) throw freeScanError;
+
     return new Response(JSON.stringify({
       subscribed: plan !== 'free',
       plan,
+      free_scan_used: !!freeScan,
       plan_expires_at: plan !== 'free' ? profile?.plan_expires_at ?? null : null,
       role: profile?.role || 'user',
     }), {

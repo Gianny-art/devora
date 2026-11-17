@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Radar, ArrowRight, Zap, Globe, BarChart3, Users, Handshake, History } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuth } from '@/contexts/AuthContext';
-import devoraLogo from '@/assets/devora-logo.png';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export default function LandingPage() {
   const { t } = useTranslation();
@@ -27,7 +27,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-1.5 shrink-0">
-            <img src={devoraLogo} alt="DEVora" className="h-10 sm:h-12 w-auto object-contain" />
+            <BrandLogo compact />
           </Link>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Link to="/auth">

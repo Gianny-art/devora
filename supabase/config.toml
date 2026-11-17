@@ -1,7 +1,10 @@
 project_id = "abifmrsvbhbzhwdubwvu"
 
 [functions.discover-businesses]
-verify_jwt = false
+verify_jwt = true
+
+[functions.audit-website]
+verify_jwt = true
 
 [functions.check-subscription]
 verify_jwt = false

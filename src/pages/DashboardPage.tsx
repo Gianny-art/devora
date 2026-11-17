@@ -89,7 +89,7 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/5 p-5 sm:p-8 mb-6 sm:mb-10"
+          className="glass-strong relative overflow-hidden rounded-2xl p-5 sm:p-8 mb-6 sm:mb-10"
         >
           <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-64 h-64 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
@@ -119,7 +119,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
-              className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card hover:border-primary/40 transition-all p-4 sm:p-5"
+              className="glass group relative overflow-hidden rounded-2xl hover:border-primary/40 transition-all p-4 sm:p-5"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform ${s.tint === 'primary' ? 'bg-primary/10' : 'bg-accent/10'}`}>
@@ -143,7 +143,7 @@ export default function DashboardPage() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group flex items-center gap-4 rounded-2xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors p-4 sm:p-5"
+            className="glass group flex items-center gap-4 rounded-2xl border-primary/30 hover:bg-primary/10 transition-colors p-4 sm:p-5"
           >
             <div className="w-11 h-11 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
               <Sparkles className="w-5 h-5 text-primary" />
@@ -195,7 +195,7 @@ export default function DashboardPage() {
                     className="snap-start shrink-0 w-[260px] sm:w-[280px]"
                   >
                     <Link to={`/scan-history/${scan.id}`}>
-                      <div className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card hover:border-primary/50 transition-all p-4 h-full">
+                      <div className="glass group relative overflow-hidden rounded-2xl hover:border-primary/50 transition-all p-4 h-full">
                         <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-primary/5 group-hover:bg-primary/10 transition-colors" />
                         <div className="relative">
                           <div className="flex items-center justify-between mb-3">

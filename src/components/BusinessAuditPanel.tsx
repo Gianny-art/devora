@@ -1,37 +1,87 @@
 import { useState } from 'react';
 import { Business } from '@/types';
-import { generateAudit, buildWhatsappUrl, AuditResult } from '@/lib/audit';
+import { buildPageSpeedAudit, generateAudit, buildWhatsappUrl, AuditResult, PageSpeedReport } from '@/lib/audit';
 import { Button } from '@/components/ui/button';
-import { FileSearch, MessageCircle, Lock, ChevronRight } from 'lucide-react';
+import { FileSearch, MessageCircle, Lock, ChevronRight, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   business: Business;
   canAudit: boolean;
   lang: 'fr' | 'en';
   onAuditGenerated?: () => void;
+  onAuditResult?: (audit: AuditResult) => void;
   onUpgradeClick?: () => void;
 }
 
-export function BusinessAuditPanel({ business, canAudit, lang, onAuditGenerated, onUpgradeClick }: Props) {
+export function BusinessAuditPanel({ business, canAudit, lang, onAuditGenerated, onAuditResult, onUpgradeClick }: Props) {
   const [audit, setAudit] = useState<AuditResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!canAudit) {
       onUpgradeClick?.();
       return;
     }
-    const result = generateAudit(business, lang);
-    setAudit(result);
-    onAuditGenerated?.();
+    setAuditError(null);
+    setLoading(true);
+    try {
+      let result: AuditResult;
+      if (business.hasWebsite && business.website) {
+        const { data, error } = await supabase.functions.invoke('audit-website', {
+          body: { website: business.website, lang },
+        });
+        if (error) {
+          let message = error.message;
+          const context = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+          if (context?.json) {
+            try {
+              const body = await context.json();
+              if (body.error) message = body.error;
+            } catch {
+              // Preserve the Functions error when the response body cannot be read.
+            }
+          }
+          throw new Error(message);
+        }
+        if (data?.error) throw new Error(data.error);
+        result = buildPageSpeedAudit(business, data as PageSpeedReport, lang);
+      } else if (business.hasWebsite) {
+        throw new Error(lang === 'fr' ? 'L’adresse du site n’est pas disponible pour effectuer un audit PageSpeed.' : 'The website URL is unavailable for a PageSpeed audit.');
+      } else {
+        result = generateAudit(business, lang);
+      }
+      setAudit(result);
+      onAuditResult?.(result);
+      onAuditGenerated?.();
+    } catch (error) {
+      console.error('Unable to audit business presence:', error);
+      setAuditError(error instanceof Error ? error.message : (lang === 'fr' ? 'L’audit a échoué.' : 'The audit failed.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!audit) {
     return (
-      <Button size="sm" variant="outline" className="w-full h-8 text-xs gap-1.5" onClick={handleGenerate}>
-        {canAudit ? <FileSearch className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-        {lang === 'fr' ? "Obtenir l'audit" : 'Get audit'}
-        {!canAudit && <ChevronRight className="w-3 h-3 ml-auto" />}
-      </Button>
+      <div className="space-y-2">
+        <Button size="sm" variant="outline" className="w-full h-9 text-xs gap-1.5" onClick={() => { void handleGenerate(); }} disabled={loading}>
+          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : canAudit ? <FileSearch className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+          {loading
+            ? (lang === 'fr' ? 'Analyse PageSpeed en cours…' : 'Running PageSpeed audit…')
+            : lang === 'fr' ? "Obtenir l'audit" : 'Get audit'}
+          {!canAudit && <ChevronRight className="w-3 h-3 ml-auto" />}
+        </Button>
+        {business.hasWebsite && business.website && (
+          <p className="text-[9px] leading-relaxed text-muted-foreground">
+            {lang === 'fr'
+              ? 'Analyse PageSpeed mobile : performance, accessibilité, bonnes pratiques et SEO. Le design et l’originalité nécessitent une revue humaine.'
+              : 'Mobile PageSpeed checks performance, accessibility, best practices, and SEO. Design and originality require human review.'}
+          </p>
+        )}
+        {auditError && <p role="alert" className="rounded-lg border border-destructive/25 bg-destructive/5 p-2 text-[10px] text-destructive">{auditError}</p>}
+      </div>
     );
   }
 
@@ -45,6 +95,42 @@ export function BusinessAuditPanel({ business, canAudit, lang, onAuditGenerated,
         </h4>
         <span className="text-xs font-mono font-bold text-primary">{audit.score}/10</span>
       </div>
+
+      {audit.source === 'pagespeed' && (
+        <div className="space-y-2 rounded-lg border border-border/50 bg-background/30 p-2.5">
+          <p className="text-[9px] text-muted-foreground">
+            {lang === 'fr' ? 'Mesures PageSpeed mobile · ' : 'Mobile PageSpeed · '}
+            {audit.auditedAt ? new Date(audit.auditedAt).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }) : ''}
+          </p>
+          {audit.categoryScores?.map(category => (
+            <div key={category.label} className="flex items-center gap-2">
+              <span className="w-24 shrink-0 text-[9px] text-muted-foreground">{category.label}</span>
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${category.score ?? 0}%` }} />
+              </div>
+              <span className="w-8 text-right font-mono text-[9px]">{category.score === null ? '—' : category.score}</span>
+            </div>
+          ))}
+          {audit.metrics && audit.metrics.length > 0 && (
+            <div className="grid grid-cols-2 gap-1 border-t border-border/40 pt-2">
+              {audit.metrics.map(metric => (
+                <div key={metric.label} className="min-w-0">
+                  <p className="truncate text-[8px] text-muted-foreground">{metric.label}</p>
+                  <p className="text-[9px] font-medium">{metric.value || '—'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {audit.source === 'listing' && (
+        <p className="rounded-lg border border-border/50 bg-background/30 p-2 text-[9px] leading-relaxed text-muted-foreground">
+          {lang === 'fr'
+            ? 'Évaluation des informations publiques disponibles uniquement ; aucune mesure technique du site n’a été effectuée.'
+            : 'This only evaluates available public listing details; no technical website measurements were performed.'}
+        </p>
+      )}
 
       <div>
         <p className="text-[10px] sm:text-xs font-semibold mb-1">{lang === 'fr' ? 'Problèmes détectés' : 'Issues detected'}</p>

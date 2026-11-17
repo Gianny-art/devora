@@ -17,6 +17,10 @@ export type Business = {
   lng: number;
   hasWebsite: boolean;
   opportunityScore?: number;
+  opportunityReasons?: string[];
+  discoveryDomains?: string[];
+  websiteAuditScore?: number;
+  websiteAuditProblems?: string[];
 };
 
 export type Lead = {
@@ -47,8 +51,8 @@ export const PLAN_FEATURES: Record<PlanTier, { name: string; price: string; amou
     name: 'Free',
     price: '0 XAF',
     amountXaf: 0,
-    features: ['2 scans (lifetime)', 'Business contact details', 'Map & list view', 'Lead CRM'],
-    featuresFr: ['2 scans (à vie)', 'Coordonnées des entreprises', 'Vue carte & liste', 'CRM Leads'],
+    features: ['1 scan (lifetime)', 'Business contact details', 'Map & list view', 'Lead CRM'],
+    featuresFr: ['1 scan (à vie)', 'Coordonnées des entreprises', 'Vue carte & liste', 'CRM Leads'],
     scanScope: '0-10 km',
   },
   premium: {

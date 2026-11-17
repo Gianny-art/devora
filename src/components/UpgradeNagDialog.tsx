@@ -12,8 +12,8 @@ interface Props {
 
 const COPY: Record<Props['reason'], { fr: [string, string]; en: [string, string] }> = {
   scan: {
-    fr: ['Vos 2 scans gratuits sont utilisés', 'Passez à Premium pour scanner sans limite, partout dans le monde.'],
-    en: ['Your 2 free scans are used up', 'Upgrade to Premium for unlimited scanning, worldwide.'],
+    fr: ['Votre scan gratuit unique a été utilisé', 'Passez à Premium pour scanner sans limite et enregistrer votre historique.'],
+    en: ['Your one free scan has been used', 'Upgrade to Premium for unlimited scans and saved scan history.'],
   },
   audit: {
     fr: ["L'audit est une fonctionnalité Premium", "Débloquez l'audit de présence numérique et l'envoi WhatsApp prêt à l'emploi avec Premium."],

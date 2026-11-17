@@ -18,7 +18,7 @@ export const PLAN_RADIUS_LIMITS: Record<string, number> = {
 };
 
 export const PLAN_LIMITS: Record<string, { maxScansTotal: number; maxAudits: number }> = {
-  free: { maxScansTotal: 2, maxAudits: 0 },
+  free: { maxScansTotal: 1, maxAudits: 0 },
   premium: { maxScansTotal: Infinity, maxAudits: Infinity },
 };
 

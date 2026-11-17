@@ -23,9 +23,9 @@ interface Props {
 
 export function BusinessHeroCard({ business, lang = 'fr', featured, rank, active, onConsult }: Props) {
   const visual = getBusinessVisual(business.category);
-  const need = getNeedLevel(business.hasWebsite, business.opportunityScore);
+  const need = getNeedLevel(business.hasWebsite, business.opportunityScore, business.websiteAuditScore);
   const summary = getNeedSummary(
-    { name: business.name, category: business.category, hasWebsite: business.hasWebsite, opportunityScore: business.opportunityScore, rating: business.rating },
+    { name: business.name, category: business.category, hasWebsite: business.hasWebsite, opportunityScore: business.opportunityScore, websiteAuditScore: business.websiteAuditScore, rating: business.rating },
     lang
   );
   const consult = lang === 'fr' ? 'Consulter' : 'Consult';
@@ -35,6 +35,7 @@ export function BusinessHeroCard({ business, lang = 'fr', featured, rank, active
       <motion.article
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: Math.min((rank || 0) * 0.04, 0.5) }}
         onClick={onConsult}
         className={`group relative overflow-hidden rounded-3xl border cursor-pointer transition-all ${
           active ? 'border-primary/60 shadow-[0_0_0_1px_hsl(var(--primary)/0.3)]' : 'border-border/60 hover:border-primary/40'
@@ -90,6 +91,7 @@ export function BusinessHeroCard({ business, lang = 'fr', featured, rank, active
     <motion.article
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: Math.min((rank || 0) * 0.04, 0.5) }}
       onClick={onConsult}
       className={`group flex gap-3 items-stretch overflow-hidden rounded-2xl border bg-card/60 backdrop-blur-xl cursor-pointer transition-all ${
         active ? 'border-primary/60' : 'border-border/50 hover:border-primary/30'
@@ -123,10 +125,17 @@ export function BusinessHeroCard({ business, lang = 'fr', featured, rank, active
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <Badge variant="outline" className={`text-[9px] ${toneClass[need.tone]}`}>
-            {business.hasWebsite ? <Globe className="w-2.5 h-2.5 mr-1" /> : <Flame className="w-2.5 h-2.5 mr-1" />}
-            {need[lang]}
-          </Badge>
+          <div className="flex min-w-0 flex-wrap items-center gap-1">
+            <Badge variant="outline" className={`text-[9px] ${toneClass[need.tone]}`}>
+              {business.hasWebsite ? <Globe className="w-2.5 h-2.5 mr-1" /> : <Flame className="w-2.5 h-2.5 mr-1" />}
+              {need[lang]}
+            </Badge>
+            {business.websiteAuditScore !== undefined && business.websiteAuditScore <= 5 && (
+              <Badge variant="outline" className="text-[9px] border-score-bad/40 text-score-bad">
+                PSI {business.websiteAuditScore}/10
+              </Badge>
+            )}
+          </div>
           <Button size="sm" variant="ghost" className="h-7 rounded-full text-[11px] text-primary hover:bg-primary/10 gap-1"
             onClick={(e) => { e.stopPropagation(); onConsult(); }}>
             {consult} <ArrowRight className="w-3 h-3" />

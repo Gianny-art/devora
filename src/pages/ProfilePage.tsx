@@ -131,8 +131,10 @@ export default function ProfilePage() {
     <AppLayout>
       <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10 space-y-6">
         {/* Header card */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-5 sm:p-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-strong relative overflow-hidden rounded-3xl p-5 sm:p-7">
+          <div className="pointer-events-none absolute -right-10 -top-20 h-52 w-52 rounded-full bg-primary/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 left-1/3 h-40 w-40 rounded-full bg-accent/10 blur-3xl" />
+          <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
             <div className="relative shrink-0">
               <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-2 border-primary/30 rounded-2xl">
                 <AvatarImage src={profile.avatar_url} className="object-cover" />
@@ -174,7 +176,7 @@ export default function ProfilePage() {
               { label: lang === 'fr' ? 'Leads suivis' : 'Tracked leads', value: stats.leadsTotal, icon: Users },
               { label: lang === 'fr' ? 'Contactées' : 'Contacted', value: stats.leadsContacted, icon: PhoneCall },
             ].map(s => (
-              <div key={s.label} className="glass rounded-xl p-3 text-center">
+              <div key={s.label} className="glass-strong rounded-2xl p-4 text-center transition-transform hover:-translate-y-0.5">
                 <s.icon className="w-4 h-4 text-primary mx-auto mb-1" />
                 <div className="text-lg font-bold font-mono">{s.value}</div>
                 <div className="text-[10px] text-muted-foreground">{s.label}</div>
@@ -187,7 +189,7 @@ export default function ProfilePage() {
         {recentActivity.length > 0 && (
           <div>
             <h2 className="text-sm font-semibold mb-3 flex items-center gap-1.5"><Clock className="w-4 h-4 text-primary" /> {lang === 'fr' ? 'Entreprises suivies récemment' : 'Recently tracked businesses'}</h2>
-            <div className="glass rounded-xl divide-y divide-border/50">
+            <div className="glass-strong rounded-2xl divide-y divide-border/50">
               {recentActivity.map(a => (
                 <div key={a.id} className="flex items-center justify-between px-3 py-2.5">
                   <span className="text-xs sm:text-sm truncate">{a.business_name}</span>
@@ -204,7 +206,7 @@ export default function ProfilePage() {
         {/* Editable form */}
         <div>
           <h2 className="text-sm font-semibold mb-3 flex items-center gap-1.5"><User className="w-4 h-4 text-primary" /> {lang === 'fr' ? 'Informations' : 'Information'}</h2>
-          <div className="glass rounded-xl p-4 space-y-4">
+          <div className="glass-strong rounded-2xl p-5 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">{t('profile.name')}</Label>
               <Input id="name" value={profile.full_name} onChange={e => setProfile(p => ({ ...p, full_name: e.target.value }))} placeholder="John Doe" />

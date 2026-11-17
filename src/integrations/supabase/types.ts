@@ -231,6 +231,9 @@ export type Database = {
         Row: {
           business_address: string | null
           business_category: string | null
+          business_city: string | null
+          business_district: string | null
+          business_email: string | null
           business_name: string
           business_phone: string | null
           business_rating: number | null
@@ -249,6 +252,9 @@ export type Database = {
         Insert: {
           business_address?: string | null
           business_category?: string | null
+          business_city?: string | null
+          business_district?: string | null
+          business_email?: string | null
           business_name: string
           business_phone?: string | null
           business_rating?: number | null
@@ -267,6 +273,9 @@ export type Database = {
         Update: {
           business_address?: string | null
           business_category?: string | null
+          business_city?: string | null
+          business_district?: string | null
+          business_email?: string | null
           business_name?: string
           business_phone?: string | null
           business_rating?: number | null
@@ -408,6 +417,7 @@ export type Database = {
           id: string
           lead_id: string
           project_id: string
+          status: string
         }
         Insert: {
           added_at?: string
@@ -415,6 +425,7 @@ export type Database = {
           id?: string
           lead_id: string
           project_id: string
+          status?: string
         }
         Update: {
           added_at?: string
@@ -422,6 +433,7 @@ export type Database = {
           id?: string
           lead_id?: string
           project_id?: string
+          status?: string
         }
         Relationships: [
           {
@@ -581,7 +593,10 @@ export type Database = {
         Row: {
           address: string
           category: string
+          city: string | null
           created_at: string
+          district: string | null
+          email: string | null
           has_website: boolean
           id: string
           lat: number
@@ -596,7 +611,10 @@ export type Database = {
         Insert: {
           address?: string
           category?: string
+          city?: string | null
           created_at?: string
+          district?: string | null
+          email?: string | null
           has_website?: boolean
           id?: string
           lat?: number
@@ -611,7 +629,10 @@ export type Database = {
         Update: {
           address?: string
           category?: string
+          city?: string | null
           created_at?: string
+          district?: string | null
+          email?: string | null
           has_website?: boolean
           id?: string
           lat?: number
@@ -703,6 +724,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_free_scan_used: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_project_member: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
