@@ -398,7 +398,7 @@ export default function ProjectPage() {
                             : 'Discuss the project with Kroma Agency, Devora’s partner, and turn this opportunity into a digital presence.'}
                         </p>
                         <Button asChild size="lg" className="mt-4 h-11 w-full gap-2 rounded-xl text-sm shadow-lg shadow-primary/20">
-                          <a href="https://kroma-agence.com/" target="_blank" rel="noopener noreferrer">
+                          <a href="https://kroma-agence.com/services/web" target="_blank" rel="noopener noreferrer">
                             {lang === 'fr' ? 'Créer le site avec Kroma Agence' : 'Build with Kroma Agency'}
                             <ExternalLink className="h-4 w-4" />
                           </a>
